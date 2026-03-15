@@ -50,7 +50,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Micro-Tasks:**
   - [x] MT-0.1.1: Criar projeto Godot 4 com pastas: `scenes/rooms/`, `scenes/ui/`, `scripts/core/`, `scripts/components/`, `scripts/rooms/`, `assets/sprites/`, `assets/audio/`, `assets/fonts/`
   - [X] MT-0.1.2: Configurar `project.godot`: viewport 540x960, stretch mode `canvas_items`, stretch aspect `keep_width`, orientation portrait
-  - [ ] MT-0.1.3: Criar `.gitignore` para Godot 4 e commitar estrutura vazia
+  - [X] MT-0.1.3: Criar `.gitignore` para Godot 4 e commitar estrutura vazia
 - **Criterios de Aceitacao:**
   1. Projeto abre no editor sem erros
   2. Preview mostra proporção 9:16 vertical
@@ -60,14 +60,14 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Autoload que controla estado do jogo, progressão e transições de cena
 - **Diretorio:** /scripts/core/
 - **Micro-Tasks:**
-  - [ ] MT-0.2.1: Criar `game_manager.gd` com `enum State {PLAYING, TRANSITIONING}`, var `current_room: int = 0`, dict `rooms_completed: Dictionary = {}`
-  - [ ] MT-0.2.2: Criar constante `ROOM_SCENES: Dictionary = {1: "res://scenes/rooms/room_1.tscn", ...}` mapeando id→path
-  - [ ] MT-0.2.3: Implementar sinais: `room_completed(room_id: int)`, `transition_started`, `transition_finished`
-  - [ ] MT-0.2.4: Criar `CanvasLayer` filho com `ColorRect` fullscreen preto (para fades), z_index=100
-  - [ ] MT-0.2.5: Implementar `func transition_to_room(room_id: int)`: valida id, seta state TRANSITIONING, fade to black via Tween no ColorRect, `get_tree().change_scene_to_file()`, fade from black, seta PLAYING
-  - [ ] MT-0.2.6: Implementar `func complete_room(room_id: int)`: marca dict, emite sinal, chama `transition_to_room(room_id + 1)` — ou cena final se room_id == 4
-  - [ ] MT-0.2.7: Registrar como Autoload "GameManager" em Project Settings
-  - [ ] MT-0.2.8: Criar cena de teste mínima que chama `GameManager.transition_to_room(1)` e verifica fade
+  - [X] MT-0.2.1: Criar `game_manager.gd` com `enum State {PLAYING, TRANSITIONING}`, var `current_room: int = 0`, dict `rooms_completed: Dictionary = {}`
+  - [X] MT-0.2.2: Criar constante `ROOM_SCENES: Dictionary = {1: "res://scenes/rooms/room_1.tscn", ...}` mapeando id→path
+  - [X] MT-0.2.3: Implementar sinais: `room_completed(room_id: int)`, `transition_started`, `transition_finished`
+  - [X] MT-0.2.4: Criar `CanvasLayer` filho com `ColorRect` fullscreen preto (para fades), z_index=100
+  - [X] MT-0.2.5: Implementar `func transition_to_room(room_id: int)`: valida id, seta state TRANSITIONING, fade to black via Tween no ColorRect, `get_tree().change_scene_to_file()`, fade from black, seta PLAYING
+  - [X] MT-0.2.6: Implementar `func complete_room(room_id: int)`: marca dict, emite sinal, chama `transition_to_room(room_id + 1)` — ou cena final se room_id == 4
+  - [X] MT-0.2.7: Registrar como Autoload "GameManager" em Project Settings
+  - [X] MT-0.2.8: Criar `scripts/core/game_manager_test.gd`, `scenes/ui/test_game_manager_transition.tscn` e `scenes/rooms/room_1.tscn` placeholder mínima. A cena de teste chama `GameManager.transition_to_room(1)` em `_ready` e valida o fade. `room_1.tscn` será expandida em `MT-2.1.1`
 - **Criterios de Aceitacao:**
   1. `GameManager` acessível globalmente
   2. Fade to/from black funciona
@@ -79,12 +79,12 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Autoload para BGM com crossfade e SFX one-shot
 - **Diretorio:** /scripts/core/
 - **Micro-Tasks:**
-  - [ ] MT-0.3.1: Criar `audio_manager.gd` com 2 filhos `AudioStreamPlayer`: `bgm_player` e `sfx_player`
-  - [ ] MT-0.3.2: Criar dict `TRACKS: Dictionary = {"main": preload("res://assets/audio/end_of_beginning.ogg"), "finale": preload("res://assets/audio/goo_goo_dolls.ogg")}` — com placeholders se áudio ainda não existe
-  - [ ] MT-0.3.3: Implementar `func play_bgm(track_key: String)`: se já tocando mesma track ignora; se outra, crossfade (Tween volume down old → swap stream → Tween volume up)
-  - [ ] MT-0.3.4: Implementar `func play_sfx(sfx: AudioStream)`: seta stream no sfx_player e toca (fire-and-forget)
-  - [ ] MT-0.3.5: Implementar `func stop_bgm(fade_duration: float = 0.5)` com fade out
-  - [ ] MT-0.3.6: Registrar como Autoload "AudioManager"
+  - [X] MT-0.3.1: Criar `audio_manager.gd` com 2 filhos `AudioStreamPlayer`: `bgm_player` e `sfx_player`
+  - [X] MT-0.3.2: Criar dict `TRACKS: Dictionary = {"main": preload("res://assets/audio/end_of_beginning.ogg"), "finale": preload("res://assets/audio/goo_goo_dolls.ogg")}` — com placeholders se áudio ainda não existe
+  - [X] MT-0.3.3: Implementar `func play_bgm(track_key: String)`: se já tocando mesma track ignora; se outra, crossfade (Tween volume down old → swap stream → Tween volume up)
+  - [X] MT-0.3.4: Implementar `func play_sfx(sfx: AudioStream)`: seta stream no sfx_player e toca (fire-and-forget)
+  - [X] MT-0.3.5: Implementar `func stop_bgm(fade_duration: float = 0.5)` com fade out
+  - [X] MT-0.3.6: Registrar como Autoload "AudioManager"
 - **Criterios de Aceitacao:**
   1. BGM toca em loop
   2. Crossfade funciona sem corte
@@ -104,10 +104,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Nó Area2D que detecta click/touch e emite sinal. Usado em Sala 1 (flores), Sala 2 (louça), Sala 3 (bebê)
 - **Diretorio:** /scripts/components/
 - **Micro-Tasks:**
-  - [ ] MT-1.1.1: Criar `hotspot.gd` extends `Area2D` com exports: `hotspot_id: String`, `one_shot: bool = true`, `active: bool = true`
-  - [ ] MT-1.1.2: Sinal `pressed(hotspot_id: String)`. Em `_input_event`, detectar `InputEventMouseButton` (button_index LEFT, pressed) OU `InputEventScreenTouch` (pressed). Se `active`, emitir sinal. Se `one_shot`, setar `active = false`
-  - [ ] MT-1.1.3: Adicionar feedback: quando mouse/touch entra na área, modulate do parent levemente (1.1, 1.1, 1.1) para indicar interatividade. Resetar ao sair
-  - [ ] MT-1.1.4: Criar cena de teste `test_hotspot.tscn` com 3 Hotspots + Label que mostra qual foi clicado. Validar touch e mouse
+  - [X] MT-1.1.1: Criar `hotspot.gd` extends `Area2D` com exports: `hotspot_id: String`, `one_shot: bool = true`, `active: bool = true`
+  - [X] MT-1.1.2: Sinal `pressed(hotspot_id: String)`. Em `_input_event`, detectar `InputEventMouseButton` (button_index LEFT, pressed) OU `InputEventScreenTouch` (pressed). Se `active`, emitir sinal. Se `one_shot`, setar `active = false`
+  - [X] MT-1.1.3: Adicionar feedback: quando mouse/touch entra na área, modulate do parent levemente (1.1, 1.1, 1.1) para indicar interatividade. Resetar ao sair
+  - [X] MT-1.1.4: Criar cena de teste `test_hotspot.tscn` com 3 Hotspots + Label que mostra qual foi clicado. Validar touch e mouse
 - **Criterios de Aceitacao:**
   1. Emite `pressed` exatamente uma vez se `one_shot`
   2. Não emite se `active = false`
@@ -119,11 +119,11 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Nó que pode ser arrastado pelo jogador e detecta drop em zonas alvo. Usado em Sala 2 (vassoura, roupa) e Sala 4 (puzzle)
 - **Diretorio:** /scripts/components/
 - **Micro-Tasks:**
-  - [ ] MT-1.2.1: Criar `draggable.gd` extends `Area2D` com exports: `drag_id: String`, `snap_back: bool = true`, `snap_distance: float = 40.0`, `active: bool = true`
-  - [ ] MT-1.2.2: Guardar `_origin_position: Vector2` no `_ready`. Implementar estado interno `_dragging: bool`. Em `_input_event`, detectar press → `_dragging = true`. Em `_input(event)`, se `_dragging`: atualizar `global_position` para posição do touch/mouse. Detectar release → `_dragging = false`, chamar `_on_dropped()`
-  - [ ] MT-1.2.3: Sinais: `drag_started(drag_id)`, `drag_ended(drag_id)`, `dropped_on_target(drag_id, target_area)`. Em `_on_dropped()`: checar overlapping areas. Se alguma pertence ao grupo "drop_target" e distância < `snap_distance`, snap para posição do target e emitir `dropped_on_target`. Senão, se `snap_back`, Tween de volta para `_origin_position`
-  - [ ] MT-1.2.4: Criar `drop_zone.gd` extends `Area2D` — script mínimo que só adiciona ao grupo "drop_target" no `_ready` e tem export `zone_id: String`
-  - [ ] MT-1.2.5: Criar cena de teste `test_drag.tscn` com 2 Draggables e 2 DropZones. Validar snap, snap_back, sinais
+  - [X] MT-1.2.1: Criar `draggable.gd` extends `Area2D` com exports: `drag_id: String`, `snap_back: bool = true`, `snap_distance: float = 40.0`, `active: bool = true`
+  - [X] MT-1.2.2: Guardar `_origin_position: Vector2` no `_ready`. Implementar estado interno `_dragging: bool`. Em `_input_event`, detectar press → `_dragging = true`. Em `_input(event)`, se `_dragging`: atualizar `global_position` para posição do touch/mouse. Detectar release → `_dragging = false`, chamar `_on_dropped()`
+  - [X] MT-1.2.3: Sinais: `drag_started(drag_id)`, `drag_ended(drag_id)`, `dropped_on_target(drag_id, target_area)`. Em `_on_dropped()`: checar overlapping areas. Se alguma pertence ao grupo "drop_target" e distância < `snap_distance`, snap para posição do target e emitir `dropped_on_target`. Senão, se `snap_back`, Tween de volta para `_origin_position`
+  - [X] MT-1.2.4: Criar `drop_zone.gd` extends `Area2D` — script mínimo que só adiciona ao grupo "drop_target" no `_ready` e tem export `zone_id: String`
+  - [X] MT-1.2.5: Criar cena de teste `test_drag.tscn` com 2 Draggables e 2 DropZones. Validar snap, snap_back, sinais
 - **Criterios de Aceitacao:**
   1. Arrasto suave seguindo dedo/mouse
   2. Snap para target quando solto próximo
@@ -136,10 +136,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Script que anima a revelação visual de um nó (modulate cinza → branco). Usado em TODAS as salas
 - **Diretorio:** /scripts/components/
 - **Micro-Tasks:**
-  - [ ] MT-1.3.1: Criar `revealer.gd` extends `Node` (attachable a qualquer nó visual). Exports: `reveal_duration: float = 0.6`, `hidden_color: Color = Color(0.15, 0.15, 0.15, 1.0)`, `revealed_color: Color = Color.WHITE`, `start_hidden: bool = true`
-  - [ ] MT-1.3.2: No `_ready`, se `start_hidden`, setar `get_parent().modulate = hidden_color`. Sinal `revealed`. Implementar `func reveal()`: cria Tween, interpola `get_parent().modulate` de atual para `revealed_color` em `reveal_duration`, ao final emite `revealed`
-  - [ ] MT-1.3.3: Implementar `func hide_visual()` (reverso, para reset) e `func reveal_instant()` (sem animação, para debug/testes)
-  - [ ] MT-1.3.4: Criar cena de teste com 4 sprites coloridos, cada um com Revealer filho, e botão que chama `reveal()` em cada um sequencialmente
+  - [x] MT-1.3.1: Criar `revealer.gd` extends `Node` (attachable a qualquer nó visual). Exports: `reveal_duration: float = 0.6`, `hidden_color: Color = Color(0.15, 0.15, 0.15, 1.0)`, `revealed_color: Color = Color.WHITE`, `start_hidden: bool = true`
+  - [X] MT-1.3.2: No `_ready`, se `start_hidden`, setar `get_parent().modulate = hidden_color`. Sinal `revealed`. Implementar `func reveal()`: cria Tween, interpola `get_parent().modulate` de atual para `revealed_color` em `reveal_duration`, ao final emite `revealed`
+  - [X] MT-1.3.3: Implementar `func hide_visual()` (reverso, para reset) e `func reveal_instant()` (sem animação, para debug/testes)
+  - [X] MT-1.3.4: Criar cena de teste com 4 sprites coloridos, cada um com Revealer filho, e botão que chama `reveal()` em cada um sequencialmente
 - **Criterios de Aceitacao:**
   1. Sprite começa escuro/cinza
   2. `reveal()` anima suavemente para cor original
@@ -151,10 +151,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Sistema para orquestrar série de eventos com delays. Usado no finale de TODAS as salas (som → animação → spawn → fade → etc)
 - **Diretorio:** /scripts/components/
 - **Micro-Tasks:**
-  - [ ] MT-1.4.1: Criar `event_chain.gd` extends `Node`. Define classe interna ou dict para steps. Cada step: `{callable: Callable, delay_after: float}`. Array `_steps: Array[Dictionary] = []`
-  - [ ] MT-1.4.2: Implementar `func add_step(what: Callable, delay_after: float = 0.5) -> EventChain` (retorna self para chaining). Implementar `func clear()`
-  - [ ] MT-1.4.3: Implementar `func play()`: itera `_steps`, para cada um chama `callable.call()`, depois `await get_tree().create_timer(delay_after).timeout`. Sinal `chain_completed` ao final. Var `_playing: bool` para evitar dupla execução
-  - [ ] MT-1.4.4: Criar cena de teste com 4 Labels que aparecem em sequência com 0.5s entre cada, usando EventChain para orquestrar
+  - [X] MT-1.4.1: Criar `event_chain.gd` extends `Node`. Define classe interna ou dict para steps. Cada step: `{callable: Callable, delay_after: float}`. Array `_steps: Array[Dictionary] = []`
+  - [X] MT-1.4.2: Implementar `func add_step(what: Callable, delay_after: float = 0.5) -> EventChain` (retorna self para chaining). Implementar `func clear()`
+  - [X] MT-1.4.3: Implementar `func play()`: itera `_steps`, para cada um chama `callable.call()`, depois `await get_tree().create_timer(delay_after).timeout`. Sinal `chain_completed` ao final. Var `_playing: bool` para evitar dupla execução
+  - [X] MT-1.4.4: Criar cena de teste com 4 Labels que aparecem em sequência com 0.5s entre cada, usando EventChain para orquestrar
 - **Criterios de Aceitacao:**
   1. Steps executam na ordem com delays corretos
   2. `chain_completed` emitido ao final
@@ -174,7 +174,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Montar cena visual do jardim com elementos posicionados
 - **Diretorio:** /scenes/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-2.1.1: Criar `room_1.tscn` com `Node2D` root. Adicionar sprite de fundo (jardim apagado, placeholder retângulo se necessário). Dividir visualmente em 4 quadrantes para os canteiros
+  - [ ] MT-2.1.1: Expandir/substituir o placeholder de `room_1.tscn` com `Node2D` root. Adicionar sprite de fundo (jardim apagado, placeholder retângulo se necessário). Dividir visualmente em 4 quadrantes para os canteiros
   - [ ] MT-2.1.2: Adicionar 4 `Sprite2D` para canteiros (rosa, hibisco, lírio, girassol), cada um com filho `Revealer` configurado `start_hidden = true`. Posicionar nos quadrantes
   - [ ] MT-2.1.3: Adicionar `Sprite2D` do bolo no centro (incompleto). Adicionar `Sprite2D` do presente no canto (fechado). Adicionar `Sprite2D` do furão (invisível, `visible = false`)
   - [ ] MT-2.1.4: Adicionar 4 `Hotspot` (Area2D + CollisionShape2D) posicionados onde as flores estão escondidas. Configurar `hotspot_id` como "rosa", "hibisco", "lirio", "girassol" e `one_shot = true`
@@ -350,20 +350,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
 **Subsistemas cobertos:** Menu, fluxo, UX, export
 
 #### Tarefa 5.1: Menu Inicial
-- **Descricao:** Tela de entrada minimalista
-- **Diretorio:** /scenes/ui/
-- **Micro-Tasks:**
-  - [ ] MT-5.1.1: Criar `main_menu.tscn`: fundo temático (escuro com partículas sutis ou imagem simples), título ou dedicatória sutil, label "toque para começar" com Tween de opacity pulsante
-  - [ ] MT-5.1.2: Script `main_menu.gd`: no `_ready`, `AudioManager.play_bgm("main")`. Em `_input`, detectar qualquer touch/click → `GameManager.transition_to_room(1)`
-  - [ ] MT-5.1.3: Configurar como cena principal em Project Settings (run on launch)
-- **Criterios de Aceitacao:**
-  1. Jogo abre nesta tela
-  2. Música já toca
-  3. Tap inicia jogo
-- **Classificacao:** Confirmado
+NÃO TERA MENU
 
 #### Tarefa 5.2: Playtest de Fluxo Completo
-- **Descricao:** Jogar menu → sala 1 → sala 2 → sala 3 → sala 4 → final sem bugs
+- **Descricao:** sala central -> sala 1 → sala 2 → sala 3 → sala 4 → final sem bugs
 - **Diretorio:** N/A (processo)
 - **Micro-Tasks:**
   - [ ] MT-5.2.1: Testar fluxo completo no editor (mouse). Anotar bugs
@@ -399,6 +389,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 
 ### /scripts/core/:
 - CRIAR | `game_manager.gd` | Estado, progressão, transições de cena, fade
+- CRIAR | `game_manager_test.gd` | Script da cena mínima de teste do GameManager
 - CRIAR | `audio_manager.gd` | BGM crossfade, SFX
 
 ### /scripts/components/:
@@ -432,13 +423,14 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - CRIAR | `final_screen.gd` | Lógica da tela final
 
 ### /scenes/rooms/:
-- CRIAR | `room_1.tscn` | Jardim das flores
+- CRIAR | `room_1.tscn` | Placeholder mínimo na Fase 0, expandido para Jardim das flores na Fase 2
 - CRIAR | `room_2.tscn` | Casa bagunçada
 - CRIAR | `room_3.tscn` | Hospital → quarto
 - CRIAR | `room_4.tscn` | Puzzle do coração
 
 ### /scenes/ui/:
 - CRIAR | `main_menu.tscn` | Tela de entrada
+- CRIAR | `test_game_manager_transition.tscn` | Cena mínima que chama GameManager.transition_to_room(1)
 - CRIAR | `final_screen.tscn` | Tela final com foto
 
 ### /scenes/components/:

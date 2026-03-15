@@ -1,0 +1,121 @@
+[gd_scene load_steps=2 format=3 uid="uid://cb2vrl746yw3i"]
+
+[ext_resource type="Script" uid="uid://tx2y8ydlan3x" path="res://scripts/components/revealer.gd" id="1_3o27u"]
+
+[node name="TestRevealer" type="Node2D"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Background" type="ColorRect" parent="CanvasLayer"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.0705882, 0.0901961, 0.141176, 1)
+
+[node name="TitleLabel" type="Label" parent="CanvasLayer"]
+offset_left = 36.0
+offset_top = 30.0
+offset_right = 504.0
+offset_bottom = 74.0
+theme_override_font_sizes/font_size = 28
+text = "Teste de Revealer"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="CanvasLayer"]
+offset_left = 36.0
+offset_top = 84.0
+offset_right = 504.0
+offset_bottom = 160.0
+theme_override_font_sizes/font_size = 18
+text = "Os quatro blocos comecam escuros.
+Use o botao para revelar em sequencia."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RevealButton" type="Button" parent="CanvasLayer"]
+offset_left = 150.0
+offset_top = 178.0
+offset_right = 390.0
+offset_bottom = 236.0
+theme_override_font_sizes/font_size = 20
+text = "Revelar em sequencia"
+
+[node name="RoseCaption" type="Label" parent="CanvasLayer"]
+offset_left = 74.0
+offset_top = 494.0
+offset_right = 224.0
+offset_bottom = 528.0
+theme_override_font_sizes/font_size = 18
+text = "rosa"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SkyCaption" type="Label" parent="CanvasLayer"]
+offset_left = 314.0
+offset_top = 494.0
+offset_right = 464.0
+offset_bottom = 528.0
+theme_override_font_sizes/font_size = 18
+text = "ceu"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LeafCaption" type="Label" parent="CanvasLayer"]
+offset_left = 74.0
+offset_top = 794.0
+offset_right = 224.0
+offset_bottom = 828.0
+theme_override_font_sizes/font_size = 18
+text = "folha"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SunCaption" type="Label" parent="CanvasLayer"]
+offset_left = 314.0
+offset_top = 794.0
+offset_right = 464.0
+offset_bottom = 828.0
+theme_override_font_sizes/font_size = 18
+text = "sol"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RoseCard" type="Polygon2D" parent="."]
+position = Vector2(150, 380)
+color = Color(0.913725, 0.372549, 0.52549, 1)
+polygon = PackedVector2Array(-70, -70, 70, -70, 70, 70, -70, 70)
+
+[node name="Revealer" type="Node" parent="RoseCard"]
+script = ExtResource("1_3o27u")
+
+[node name="SkyCard" type="Polygon2D" parent="."]
+position = Vector2(390, 380)
+color = Color(0.372549, 0.65098, 0.901961, 1)
+polygon = PackedVector2Array(-70, -70, 70, -70, 70, 70, -70, 70)
+
+[node name="Revealer" type="Node" parent="SkyCard"]
+script = ExtResource("1_3o27u")
+
+[node name="LeafCard" type="Polygon2D" parent="."]
+position = Vector2(150, 680)
+color = Color(0.415686, 0.737255, 0.427451, 1)
+polygon = PackedVector2Array(-70, -70, 70, -70, 70, 70, -70, 70)
+
+[node name="Revealer" type="Node" parent="LeafCard"]
+script = ExtResource("1_3o27u")
+
+[node name="SunCard" type="Polygon2D" parent="."]
+position = Vector2(390, 680)
+color = Color(0.956863, 0.776471, 0.278431, 1)
+polygon = PackedVector2Array(-70, -70, 70, -70, 70, 70, -70, 70)
+
+[node name="Revealer" type="Node" parent="SunCard"]
+script = ExtResource("1_3o27u")
+
+[connection signal="pressed" from="CanvasLayer/RevealButton" to="RoseCard/Revealer" method="reveal"]
+[connection signal="revealed" from="RoseCard/Revealer" to="SkyCard/Revealer" method="reveal"]
+[connection signal="revealed" from="SkyCard/Revealer" to="LeafCard/Revealer" method="reveal"]
+[connection signal="revealed" from="LeafCard/Revealer" to="SunCard/Revealer" method="reveal"]

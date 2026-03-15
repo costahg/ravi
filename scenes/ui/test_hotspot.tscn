@@ -1,0 +1,131 @@
+[gd_scene load_steps=3 format=3 uid="uid://cv43sxt00eqrg"]
+
+[ext_resource type="Script" uid="uid://vjccydmum12g" path="res://scripts/components/hotspot.gd" id="1_kfx5l"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_card"]
+size = Vector2(140, 140)
+
+[node name="TestHotspot" type="Node2D"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Background" type="ColorRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.0705882, 0.0862745, 0.141176, 1)
+
+[node name="TitleLabel" type="Label" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 500.0
+offset_bottom = 96.0
+theme_override_font_sizes/font_size = 28
+text = "Teste de Hotspot"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 104.0
+offset_right = 500.0
+offset_bottom = 180.0
+theme_override_font_sizes/font_size = 18
+text = "Passe o mouse sobre os blocos para ver o feedback.
+Clique ou toque para atualizar o ultimo hotspot."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StatusTitleLabel" type="Label" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 208.0
+offset_right = 500.0
+offset_bottom = 244.0
+theme_override_font_sizes/font_size = 20
+text = "Ultimo hotspot:"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StatusValueLabel" type="Label" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 246.0
+offset_right = 500.0
+offset_bottom = 292.0
+theme_override_font_sizes/font_size = 26
+text = "nenhum"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RoseCaption" type="Label" parent="CanvasLayer"]
+offset_left = 82.0
+offset_top = 496.0
+offset_right = 188.0
+offset_bottom = 530.0
+theme_override_font_sizes/font_size = 18
+text = "rosa"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HibiscusCaption" type="Label" parent="CanvasLayer"]
+offset_left = 342.0
+offset_top = 496.0
+offset_right = 468.0
+offset_bottom = 530.0
+theme_override_font_sizes/font_size = 18
+text = "hibisco"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LilyCaption" type="Label" parent="CanvasLayer"]
+offset_left = 214.0
+offset_top = 748.0
+offset_right = 326.0
+offset_bottom = 782.0
+theme_override_font_sizes/font_size = 18
+text = "lirio"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RoseCard" type="Polygon2D" parent="."]
+position = Vector2(135, 430)
+color = Color(0.878431, 0.34902, 0.533333, 1)
+polygon = PackedVector2Array(-70, -70, 70, -70, 70, 70, -70, 70)
+
+[node name="Hotspot" type="Area2D" parent="RoseCard"]
+script = ExtResource("1_kfx5l")
+hotspot_id = "rosa"
+one_shot = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoseCard/Hotspot"]
+shape = SubResource("RectangleShape2D_card")
+
+[node name="HibiscusCard" type="Polygon2D" parent="."]
+position = Vector2(405, 430)
+color = Color(0.929412, 0.588235, 0.286275, 1)
+polygon = PackedVector2Array(-70, -70, 70, -70, 70, 70, -70, 70)
+
+[node name="Hotspot" type="Area2D" parent="HibiscusCard"]
+script = ExtResource("1_kfx5l")
+hotspot_id = "hibisco"
+one_shot = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HibiscusCard/Hotspot"]
+shape = SubResource("RectangleShape2D_card")
+
+[node name="LilyCard" type="Polygon2D" parent="."]
+position = Vector2(270, 682)
+color = Color(0.980392, 0.796078, 0.286275, 1)
+polygon = PackedVector2Array(-70, -70, 70, -70, 70, 70, -70, 70)
+
+[node name="Hotspot" type="Area2D" parent="LilyCard"]
+script = ExtResource("1_kfx5l")
+hotspot_id = "lirio"
+one_shot = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LilyCard/Hotspot"]
+shape = SubResource("RectangleShape2D_card")
+
+[connection signal="pressed" from="RoseCard/Hotspot" to="CanvasLayer/StatusValueLabel" method="set_text"]
+[connection signal="pressed" from="HibiscusCard/Hotspot" to="CanvasLayer/StatusValueLabel" method="set_text"]
+[connection signal="pressed" from="LilyCard/Hotspot" to="CanvasLayer/StatusValueLabel" method="set_text"]

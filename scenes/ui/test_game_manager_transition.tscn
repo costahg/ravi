@@ -1,0 +1,40 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/game_manager_test.gd" id="1_2uj1r"]
+
+[node name="TestGameManagerTransition" type="Node"]
+script = ExtResource("1_2uj1r")
+auto_start_transition = true
+target_room_id = 1
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Background" type="ColorRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+color = Color(0.0823529, 0.101961, 0.160784, 1)
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 440.0
+offset_right = 500.0
+offset_bottom = 520.0
+theme_override_font_sizes/font_size = 28
+text = "Iniciando teste do GameManager..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="CanvasLayer"]
+offset_left = 60.0
+offset_top = 530.0
+offset_right = 480.0
+offset_bottom = 620.0
+theme_override_font_sizes/font_size = 18
+text = "A cena chama GameManager.transition_to_room(1) em _ready."
+horizontal_alignment = 1
+vertical_alignment = 1

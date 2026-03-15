@@ -1,0 +1,106 @@
+[gd_scene load_steps=2 format=3 uid="uid://tj3ewvrbe6y2"]
+
+[ext_resource type="Script" uid="uid://cq5tcp2sj6xsy" path="res://scripts/components/event_chain.gd" id="1_6x2hm"]
+
+[node name="TestEventChain" type="Node2D"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Background" type="ColorRect" parent="CanvasLayer"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.0745098, 0.0901961, 0.14902, 1)
+
+[node name="TitleLabel" type="Label" parent="CanvasLayer"]
+offset_left = 36.0
+offset_top = 28.0
+offset_right = 504.0
+offset_bottom = 72.0
+theme_override_font_sizes/font_size = 28
+text = "Teste de EventChain"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="CanvasLayer"]
+offset_left = 36.0
+offset_top = 84.0
+offset_right = 504.0
+offset_bottom = 152.0
+theme_override_font_sizes/font_size = 18
+text = "Cada label aparece com 0.5s de intervalo.
+Toque no botao para iniciar a sequencia."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StartButton" type="Button" parent="CanvasLayer"]
+offset_left = 150.0
+offset_top = 176.0
+offset_right = 390.0
+offset_bottom = 234.0
+theme_override_font_sizes/font_size = 20
+text = "Iniciar sequencia"
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer"]
+offset_left = 36.0
+offset_top = 252.0
+offset_right = 504.0
+offset_bottom = 296.0
+theme_override_font_sizes/font_size = 18
+text = "Aguardando..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StepLabel1" type="Label" parent="CanvasLayer"]
+visible = false
+offset_left = 36.0
+offset_top = 400.0
+offset_right = 504.0
+offset_bottom = 450.0
+theme_override_font_sizes/font_size = 24
+text = "Step 1: luz acesa"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StepLabel2" type="Label" parent="CanvasLayer"]
+visible = false
+offset_left = 36.0
+offset_top = 500.0
+offset_right = 504.0
+offset_bottom = 550.0
+theme_override_font_sizes/font_size = 24
+text = "Step 2: janela abriu"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StepLabel3" type="Label" parent="CanvasLayer"]
+visible = false
+offset_left = 36.0
+offset_top = 600.0
+offset_right = 504.0
+offset_bottom = 650.0
+theme_override_font_sizes/font_size = 24
+text = "Step 3: vento entrou"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StepLabel4" type="Label" parent="CanvasLayer"]
+visible = false
+offset_left = 36.0
+offset_top = 700.0
+offset_right = 504.0
+offset_bottom = 750.0
+theme_override_font_sizes/font_size = 24
+text = "Step 4: cena pronta"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EventChain" type="Node" parent="."]
+script = ExtResource("1_6x2hm")
+configured_targets = [NodePath("../CanvasLayer/StepLabel1"), NodePath("../CanvasLayer/StepLabel2"), NodePath("../CanvasLayer/StepLabel3"), NodePath("../CanvasLayer/StepLabel4")]
+configured_methods = ["show", "show", "show", "show"]
+configured_delays = [0.5, 0.5, 0.5, 0.5]
+
+[connection signal="pressed" from="CanvasLayer/StartButton" to="EventChain" method="play"]
+[connection signal="pressed" from="CanvasLayer/StartButton" to="CanvasLayer/StatusLabel" method="set_text" binds= ["Executando sequencia..."]]

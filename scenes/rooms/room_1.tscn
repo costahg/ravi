@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/game_manager_test.gd" id="1_3s0u7"]
+
+[node name="Room1" type="Node2D"]
+script = ExtResource("1_3s0u7")
+expected_room_id = 1
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Background" type="ColorRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+color = Color(0.113725, 0.176471, 0.117647, 1)
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 430.0
+offset_right = 500.0
+offset_bottom = 520.0
+theme_override_font_sizes/font_size = 28
+text = "Room 1 placeholder"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="CanvasLayer"]
+offset_left = 50.0
+offset_top = 530.0
+offset_right = 490.0
+offset_bottom = 640.0
+theme_override_font_sizes/font_size = 18
+text = "Placeholder minimo da Fase 0. Sera expandido em MT-2.1.1."
+horizontal_alignment = 1
+vertical_alignment = 1
