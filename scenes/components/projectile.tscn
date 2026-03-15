@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/rooms/room_3/projectile.gd" id="1_projectile"]
+[ext_resource type="Texture2D" path="res://assets/sprites/Seringa.png" id="2_seringa"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_projectile"]
+radius = 24.0
+
+[node name="Projectile" type="Area2D" groups=["projectile"]]
+script = ExtResource("1_projectile")
+monitoring = true
+monitorable = true
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = ExtResource("2_seringa")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_projectile")
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="."]
+rect = Rect2(-32, -32, 64, 64)
+
+[node name="LifetimeTimer" type="Timer" parent="."]
+wait_time = 5.0
+one_shot = true

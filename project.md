@@ -360,7 +360,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Diretorio:** /scenes/rooms/ e /scripts/rooms/
 - **Micro-Tasks:**
   - [X] MT-4.5.1: Preparar na cena a animação única de transformação com `res://assets/sprites/Room2Transition1024x1536_7C3L.png` em `AnimatedSprite2D` ou estrutura equivalente, configurada como spritesheet 7 colunas x 3 linhas e executada uma única vez quando `_start_transformation()` for chamado
-  - [ ] MT-4.5.2: Ao terminar a transição, trocar para o loop `res://assets/sprites/Room2Loop1024x1536_11C2L_S01.png` (11 colunas x 2 linhas), manter o estado final organizado visível por um breve beat emocional e então chamar `GameManager.complete_room(2)`
+  - [X] MT-4.5.2: Ao terminar a transição, trocar para o loop `res://assets/sprites/Room2Loop1024x1536_11C2L_S01.png` (11 colunas x 2 linhas), manter o estado final organizado visível por um breve beat emocional e então chamar `GameManager.complete_room(2)`
 - **Criterios de Aceitacao:**
   1. A transição usa os assets finais já produzidos para a Room 2
   2. O loop final entra automaticamente após a animação única
@@ -379,10 +379,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Mecânica de desvio de projéteis médicos por tempo limitado. A protagonista é quem sofre as colisões e sobrevive ao bullet hell
 - **Diretorio:** /scripts/rooms/room_3/ e /scenes/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-5.1.1: Criar `room_3.tscn` com fundo hospitalar escuro. Instanciar a protagonista como avatar controlado da fase e criar `Timer` de sobrevivência (15s, export var para ajuste)
-  - [ ] MT-5.1.2: Criar `player_dodge.gd` como script especializado da protagonista no bullet hell: segue touch/mouse, clampa posição dentro das margens da fase e emite sinal `hit` ao detectar overlap com grupo "projectile"
-  - [ ] MT-5.1.3: Criar `projectile.tscn`: `Area2D` no grupo "projectile" com sprite (seringa/placeholder), script `projectile.gd` com export `speed: float` e `direction: Vector2`. Move em `_process`. Se sair da tela (`VisibleOnScreenNotifier2D`), `queue_free()`
-  - [ ] MT-5.1.4: Criar `bullet_spawner.gd`: Timer de spawn (0.4s-0.8s). Instancia `projectile.tscn` em posições aleatórias nas bordas com direção para dentro. Export `spawn_rate_range: Vector2` para variação
+  - [X] MT-5.1.1: Criar `room_3.tscn` com fundo hospitalar escuro. Instanciar a protagonista como avatar controlado da fase e criar `Timer` de sobrevivência (15s, export var para ajuste)
+  - [X] MT-5.1.2: Criar `player_dodge.gd` como script especializado da protagonista no bullet hell: segue touch/mouse, clampa posição dentro das margens da fase e emite sinal `hit` ao detectar overlap com grupo "projectile"
+  - [X] MT-5.1.3: Criar `projectile.tscn`: `Area2D` no grupo "projectile" com sprite (seringa/placeholder), script `projectile.gd` com export `speed: float` e `direction: Vector2`. Move em `_process`. Se sair da tela (`VisibleOnScreenNotifier2D`), `queue_free()`
+  - [x] MT-5.1.4: Criar `bullet_spawner.gd`: Timer de spawn (0.4s-0.8s). Instancia `projectile.tscn` em posições aleatórias nas bordas com direção para dentro. Export `spawn_rate_range: Vector2` para variação
   - [ ] MT-5.1.5: No controller `room_3_controller.gd`: ao script da protagonista emitir `hit`, flash vermelho (Tween modulate) + breve invencibilidade (0.5s). NÃO é game over. Quando timer de sobrevivência acaba, spawner para, projéteis restantes fazem fade out e chama `_transition_to_nursery()`
 - **Criterios de Aceitacao:**
   1. Player segue dedo responsivamente

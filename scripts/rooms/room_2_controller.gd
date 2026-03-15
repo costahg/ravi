@@ -4,6 +4,12 @@ signal task_enabled(task_id: String)
 
 const DISH_CLEAN_RATE: float = 1.0
 const SWEEP_CLEAN_RATE: float = 1.0
+const ROOM2_FINAL_LOOP_TEXTURE_PATH: String = "res://assets/sprites/Room2Loop1024x1536_11C2L_S01.png"
+const ROOM2_FINAL_LOOP_COLUMNS: int = 11
+const ROOM2_FINAL_LOOP_ROWS: int = 2
+const ROOM2_FINAL_LOOP_FRAME_SIZE: Vector2 = Vector2(1024.0, 1536.0)
+const ROOM2_FINAL_LOOP_FPS: float = 12.0
+const ROOM2_ANIMATION_FALLBACK_BUFFER: float = 0.1
 
 @onready var _dishes_hotspot: Area2D = $CanvasLayer/TaskZones/DishesZone/Hotspot
 @onready var _clothes_hotspot: Area2D = $CanvasLayer/TaskZones/ClothesZone/Hotspot
@@ -64,6 +70,11 @@ var _sweep_target_areas: Dictionary = {}
 var _sweep_mask_nodes: Dictionary = {}
 var _sweep_progress_by_target: Dictionary = {}
 var _sweep_broom_dragging: bool = false
+var _final_loop_frames: SpriteFrames
+var _room_completion_requested: bool = false
+var _hub_return_requested: bool = false
+var _pending_animation_name: StringName = &""
+var _animation_fallback_token: int = 0
 
 
 func _ready() -> void:
@@ -113,9 +124,11 @@ func _ready() -> void:
 
 	_connect_hotspots()
 	_connect_protagonist()
+	_connect_transition_animation()
 	_connect_dishes_interaction()
 	_connect_clothes_interaction()
 	_connect_sweep_interaction()
+	_final_loop_frames = _build_final_loop_frames()
 	_sync_all_task_visuals()
 	_sync_dishes_interaction_state()
 	_sync_clothes_interaction_state()
@@ -151,6 +164,7 @@ func _on_hotspot_pressed(task_id: String) -> void:
 
 func _on_protagonist_destination_reached(_destination: Vector2) -> void:
 	if _pending_task.is_empty():
+		_set_manual_input_enabled(true)
 		return
 
 	_active_task = _pending_task
@@ -176,6 +190,7 @@ func complete_task(task_id: String) -> void:
 	_tasks_done[task_id] = true
 	_active_task = ""
 	_pending_task = ""
+	_set_manual_input_enabled(true)
 	_apply_task_visual_state(task_id)
 	_refresh_task_hotspots()
 
@@ -219,6 +234,15 @@ func _connect_protagonist() -> void:
 	var on_destination_reached: Callable = Callable(self, "_on_protagonist_destination_reached")
 	if _protagonist.has_signal("destination_reached") and not _protagonist.is_connected("destination_reached", on_destination_reached):
 		_protagonist.connect("destination_reached", on_destination_reached)
+
+
+func _connect_transition_animation() -> void:
+	if _transition_animation == null:
+		return
+
+	var on_animation_finished: Callable = Callable(self, "_on_transition_animation_finished")
+	if not _transition_animation.is_connected("animation_finished", on_animation_finished):
+		_transition_animation.connect("animation_finished", on_animation_finished)
 
 
 func _connect_dishes_interaction() -> void:
@@ -386,8 +410,7 @@ func _move_protagonist_to_action(target_position: Vector2) -> void:
 	if _protagonist.has_method("consume_next_press"):
 		_protagonist.call("consume_next_press")
 
-	if _protagonist.has_method("set_manual_input_enabled"):
-		_protagonist.call("set_manual_input_enabled", false)
+	_set_manual_input_enabled(false)
 
 	if _protagonist.has_method("move_to_global_position"):
 		_protagonist.call("move_to_global_position", target_position)
@@ -416,6 +439,7 @@ func _activate_clothes_interaction() -> void:
 		push_warning("Room2Controller nao pode ativar a tarefa 'clothes' sem CanvasLayer/ClothesInteraction.")
 		_active_task = ""
 		_pending_task = ""
+		_set_manual_input_enabled(true)
 		_refresh_task_hotspots()
 		return
 
@@ -561,6 +585,11 @@ func _get_cloth_by_drag_id(drag_id: String) -> Area2D:
 	return null
 
 
+func _set_manual_input_enabled(is_enabled: bool) -> void:
+	if _protagonist.has_method("set_manual_input_enabled"):
+		_protagonist.call("set_manual_input_enabled", is_enabled)
+
+
 func _set_cloth_enabled_state(cloth: Area2D, is_enabled: bool) -> void:
 	cloth.visible = is_enabled
 	cloth.input_pickable = is_enabled
@@ -581,14 +610,146 @@ func _start_transformation() -> void:
 
 	if _transition_animation == null:
 		push_warning("Room2Controller nao encontrou CanvasLayer/TransitionAnimation para tocar a transformacao final.")
+		_play_final_loop_and_complete_room()
 		return
 
 	if _transition_animation.sprite_frames == null or not _transition_animation.sprite_frames.has_animation(&"transition"):
 		push_warning("Room2Controller nao encontrou a animacao 'transition' em CanvasLayer/TransitionAnimation.")
+		_play_final_loop_and_complete_room()
 		return
 
+	_play_animation_stage(_transition_animation.sprite_frames, &"transition")
+
+
+func _on_transition_animation_finished() -> void:
+	if _transition_animation == null:
+		return
+
+	_handle_animation_stage_finished(_transition_animation.animation)
+
+
+func _play_final_loop_and_complete_room() -> void:
+	if _room_completion_requested:
+		return
+
+	_room_completion_requested = true
+
+	if _transition_animation == null:
+		push_warning("Room2Controller nao encontrou CanvasLayer/TransitionAnimation para tocar o loop final da transformacao.")
+		_request_return_to_hub()
+		return
+
+	if _final_loop_frames == null:
+		push_warning("Room2Controller nao conseguiu preparar o loop final da Room 2. Seguindo para o retorno ao hub sem a animacao final.")
+		_request_return_to_hub()
+		return
+
+	_transition_animation.sprite_frames = _final_loop_frames
+	_play_animation_stage(_final_loop_frames, &"final_loop")
+
+
+func _play_animation_stage(sprite_frames: SpriteFrames, animation_name: StringName) -> void:
+	if _transition_animation == null or sprite_frames == null or not sprite_frames.has_animation(animation_name):
+		_handle_animation_stage_finished(animation_name)
+		return
+
+	sprite_frames.set_animation_loop(animation_name, false)
+	_pending_animation_name = animation_name
 	_transition_animation.visible = true
-	_transition_animation.animation = &"transition"
+	_transition_animation.animation = animation_name
 	_transition_animation.frame = 0
 	_transition_animation.frame_progress = 0.0
-	_transition_animation.play(&"transition")
+	_transition_animation.play(animation_name)
+	_schedule_animation_stage_fallback(sprite_frames, animation_name)
+
+
+func _handle_animation_stage_finished(animation_name: StringName) -> void:
+	if animation_name != _pending_animation_name:
+		return
+
+	_pending_animation_name = &""
+
+	if animation_name == &"transition":
+		_play_final_loop_and_complete_room()
+		return
+
+	if animation_name == &"final_loop":
+		_request_return_to_hub()
+
+
+func _schedule_animation_stage_fallback(sprite_frames: SpriteFrames, animation_name: StringName) -> void:
+	_animation_fallback_token += 1
+	var delay_seconds: float = _get_animation_duration(sprite_frames, animation_name) + ROOM2_ANIMATION_FALLBACK_BUFFER
+	if delay_seconds <= 0.0:
+		_handle_animation_stage_finished(animation_name)
+		return
+
+	var fallback_timer: SceneTreeTimer = get_tree().create_timer(delay_seconds)
+	fallback_timer.timeout.connect(
+		Callable(self, "_on_animation_stage_fallback_timeout").bind(_animation_fallback_token, animation_name)
+	)
+
+
+func _on_animation_stage_fallback_timeout(token: int, animation_name: StringName) -> void:
+	if token != _animation_fallback_token:
+		return
+
+	_handle_animation_stage_finished(animation_name)
+
+
+func _get_animation_duration(sprite_frames: SpriteFrames, animation_name: StringName) -> float:
+	if sprite_frames == null or not sprite_frames.has_animation(animation_name):
+		return 0.0
+
+	var animation_speed: float = sprite_frames.get_animation_speed(animation_name)
+	if animation_speed <= 0.0:
+		return 0.0
+
+	return float(sprite_frames.get_frame_count(animation_name)) / animation_speed
+
+
+func _request_return_to_hub() -> void:
+	if _hub_return_requested:
+		return
+
+	_hub_return_requested = true
+
+	if GameManager.current_room == 2 and not GameManager.rooms_completed.get(2, false):
+		GameManager.complete_room(2)
+		return
+
+	push_warning(
+		"Room2Controller nao conseguiu concluir a sala 2 via GameManager.complete_room(2). "
+		+ "Aplicando fallback para GameManager.return_to_hub()."
+	)
+	GameManager.return_to_hub()
+
+
+func _build_final_loop_frames() -> SpriteFrames:
+	if not ResourceLoader.exists(ROOM2_FINAL_LOOP_TEXTURE_PATH):
+		push_warning("Room2Controller nao encontrou o spritesheet final em %s." % ROOM2_FINAL_LOOP_TEXTURE_PATH)
+		return null
+
+	var loop_texture: Texture2D = load(ROOM2_FINAL_LOOP_TEXTURE_PATH) as Texture2D
+	if loop_texture == null:
+		push_warning("Room2Controller nao conseguiu carregar o spritesheet final em %s." % ROOM2_FINAL_LOOP_TEXTURE_PATH)
+		return null
+
+	var sprite_frames: SpriteFrames = SpriteFrames.new()
+	sprite_frames.add_animation(&"final_loop")
+	sprite_frames.set_animation_loop(&"final_loop", false)
+	sprite_frames.set_animation_speed(&"final_loop", ROOM2_FINAL_LOOP_FPS)
+
+	for row_index in ROOM2_FINAL_LOOP_ROWS:
+		for column_index in ROOM2_FINAL_LOOP_COLUMNS:
+			var atlas_texture: AtlasTexture = AtlasTexture.new()
+			atlas_texture.atlas = loop_texture
+			atlas_texture.region = Rect2(
+				float(column_index) * ROOM2_FINAL_LOOP_FRAME_SIZE.x,
+				float(row_index) * ROOM2_FINAL_LOOP_FRAME_SIZE.y,
+				ROOM2_FINAL_LOOP_FRAME_SIZE.x,
+				ROOM2_FINAL_LOOP_FRAME_SIZE.y
+			)
+			sprite_frames.add_frame(&"final_loop", atlas_texture)
+
+	return sprite_frames

@@ -203,7 +203,7 @@ animations = [{
 }],
 "loop": false,
 "name": &"transition",
-"speed": 12.0
+"speed": 30.0
 }]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_dish_item"]
@@ -426,8 +426,6 @@ texture_filter = 3
 scale = Vector2(0.52734375, 0.62500006)
 sprite_frames = SubResource("SpriteFrames_room2_transition")
 animation = &"transition"
-frame = 20
-frame_progress = 1.0
 centered = false
 
 [node name="DishInteraction" type="Node2D" parent="CanvasLayer"]
