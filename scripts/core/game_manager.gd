@@ -11,6 +11,7 @@ const ROOM_SCENES: Dictionary = {
 	3: "res://scenes/rooms/room_3.tscn",
 	4: "res://scenes/rooms/room_4.tscn",
 }
+const MAIN_MENU_SCENE_PATH: String = "res://scenes/ui/main_menu.tscn"
 const FINAL_SCENE_PATH: String = "res://scenes/ui/final_screen.tscn"
 
 signal room_completed(room_id: int)
@@ -52,7 +53,38 @@ func transition_to_room(room_id: int) -> void:
 		push_warning("GameManager.transition_to_room ignorado: room_id invalido: %s" % room_id)
 		return
 
+	if state == State.TRANSITIONING:
+		push_warning("GameManager.transition_to_room ignorado: transicao ja esta em andamento.")
+		return
+
+	if current_room == 0 and not can_enter_room(room_id):
+		push_warning("GameManager.transition_to_room ignorado: room_id %s nao esta liberado a partir do hub." % room_id)
+		return
+
 	_transition_to_scene_path(ROOM_SCENES[room_id], room_id, true)
+
+
+func return_to_hub() -> void:
+	_transition_to_scene_path(MAIN_MENU_SCENE_PATH, 0, true)
+
+
+func get_next_room_to_unlock() -> int:
+	for room_index in 4:
+		var room_id: int = room_index + 1
+		if not rooms_completed.get(room_id, false):
+			return room_id
+
+	return 0
+
+
+func can_enter_room(room_id: int) -> bool:
+	if not ROOM_SCENES.has(room_id):
+		return false
+
+	if rooms_completed.get(room_id, false):
+		return false
+
+	return room_id == get_next_room_to_unlock()
 
 
 func complete_room(room_id: int) -> void:
@@ -67,11 +99,11 @@ func complete_room(room_id: int) -> void:
 	rooms_completed[room_id] = true
 	room_completed.emit(room_id)
 
-	if room_id == 4:
-		_transition_to_scene_path(FINAL_SCENE_PATH, current_room, false)
+	if room_id < 4:
+		return_to_hub()
 		return
 
-	transition_to_room(room_id + 1)
+	_transition_to_scene_path(FINAL_SCENE_PATH, current_room, false)
 
 
 func _transition_to_scene_path(scene_path: String, next_room_id: int, update_current_room: bool) -> void:
@@ -127,6 +159,7 @@ func _preload_available_scenes() -> void:
 		var scene_path: String = scene_path_variant
 		_cache_scene_if_available(scene_path)
 
+	_cache_scene_if_available(MAIN_MENU_SCENE_PATH)
 	_cache_scene_if_available(FINAL_SCENE_PATH)
 
 

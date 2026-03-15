@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[node name="FinalScreen" type="CanvasLayer"]
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+color = Color(0, 0, 0, 1)
+
+[node name="PlaceholderLabel" type="Label" parent="."]
+offset_left = 60.0
+offset_top = 420.0
+offset_right = 480.0
+offset_bottom = 500.0
+theme_override_font_sizes/font_size = 30
+text = "Tela final placeholder"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="."]
+offset_left = 70.0
+offset_top = 515.0
+offset_right = 470.0
+offset_bottom = 595.0
+theme_override_font_sizes/font_size = 18
+text = "MT-5.4.2 vai expandir esta cena."
+horizontal_alignment = 1
+vertical_alignment = 1

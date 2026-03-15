@@ -84,7 +84,6 @@ func _input(event: InputEvent) -> void:
 func _on_mouse_entered() -> void:
 	if not active:
 		return
-
 	_mouse_hovering = true
 	_refresh_feedback()
 

@@ -1,0 +1,242 @@
+[gd_scene load_steps=17 format=3 uid="uid://c2pjhfsaj2kck"]
+
+[ext_resource type="Script" uid="uid://vjccydmum12g" path="res://scripts/components/hotspot.gd" id="1_k0g1m"]
+[ext_resource type="Script" uid="uid://cae4grqlpjjxr" path="res://scripts/rooms/main_menu_controller.gd" id="1_qk8t6"]
+[ext_resource type="PackedScene" uid="uid://bto3gsqr453yv" path="res://scenes/components/protagonist.tscn" id="2_4k5mb"]
+[ext_resource type="Texture2D" uid="uid://gys8bvehpkqd" path="res://assets/sprites/MainRoom.png" id="2_bgtex"]
+[ext_resource type="Texture2D" uid="uid://i1du0jp51jh3" path="res://assets/sprites/MainRoomHighlights.png" id="3_uw8ak"]
+
+[sub_resource type="Gradient" id="Gradient_x2yvf"]
+colors = PackedColorArray(0.988235, 0.909804, 0.447059, 1, 1, 0.713726, 0.231373, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_x2yvf"]
+gradient = SubResource("Gradient_x2yvf")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_uhagc"]
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(270, 480, 1)
+gravity = Vector3(0, 0, 0)
+linear_accel_min = -2.23517e-06
+linear_accel_max = 0.999998
+scale_min = 0.0
+scale_max = 6.0
+color_ramp = SubResource("GradientTexture1D_x2yvf")
+turbulence_enabled = true
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door_1"]
+size = Vector2(130, 230)
+
+[sub_resource type="Shader" id="Shader_fog"]
+code = "shader_type canvas_item;
+//render_mode unshaded; // optional
+
+// Noise texture
+uniform sampler2D noise_texture: repeat_enable, filter_nearest;
+// Fog density
+uniform float density: hint_range(0.0, 1.0) = 0.1;
+// Fog speed
+uniform vec2 speed = vec2(0.02, 0.01);
+
+
+// Called for every pixel the material is visible on
+void fragment() {
+	// Make the fog slowly move
+	vec2 uv = UV + speed * TIME;
+	// Sample the noise texture
+	float noise = texture(noise_texture, uv).r;
+	// Convert the noise from the (0.0, 1.0) range to the (-1.0, 1.0) range
+	// and clamp it between 0.0 and 1.0 again
+	float fog = clamp(noise * 2.0 - 1.0, 0.0, 1.0);
+	// Apply the fog effect
+	COLOR.a *= fog * density;
+}
+"
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_fog"]
+noise_type = 0
+frequency = 0.035
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_fog"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_fog")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fog"]
+shader = SubResource("Shader_fog")
+shader_parameter/noise_texture = SubResource("NoiseTexture2D_fog")
+shader_parameter/density = 0.25
+shader_parameter/speed = Vector2(0.02, 0.01)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door_2"]
+size = Vector2(220, 220)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door_3"]
+size = Vector2(130, 230)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door_4"]
+size = Vector2(240, 220)
+
+[node name="MainMenu" type="Node2D"]
+script = ExtResource("1_qk8t6")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="AmbientFireflies" type="GPUParticles2D" parent="CanvasLayer"]
+z_index = 1
+position = Vector2(270, 480)
+lifetime = 5.0
+preprocess = 50.0
+process_material = SubResource("ParticleProcessMaterial_uhagc")
+
+[node name="Background" type="TextureRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("2_bgtex")
+expand_mode = 1
+
+[node name="Highlights" type="TextureRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("3_uw8ak")
+expand_mode = 1
+
+[node name="Protagonist" parent="CanvasLayer" instance=ExtResource("2_4k5mb")]
+z_index = 4
+position = Vector2(270, 500)
+margin_top = 150.0
+margin_bottom = 290.0
+margin_left = 120.0
+margin_right = 120.0
+
+[node name="Doors" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Door1" type="Control" parent="CanvasLayer/Doors"]
+anchors_preset = 0
+offset_left = 5.0
+offset_top = 355.0
+offset_right = 120.0
+offset_bottom = 605.0
+mouse_filter = 2
+
+[node name="Hotspot" type="Area2D" parent="CanvasLayer/Doors/Door1"]
+position = Vector2(57.5, 125)
+script = ExtResource("1_k0g1m")
+hotspot_id = "door_1"
+one_shot = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/Doors/Door1/Hotspot"]
+position = Vector2(0.5, 23)
+shape = SubResource("RectangleShape2D_door_1")
+
+[node name="Fog" type="ColorRect" parent="CanvasLayer/Doors/Door1"]
+visible = false
+z_index = 3
+material = SubResource("ShaderMaterial_fog")
+layout_mode = 0
+offset_left = -7.0
+offset_top = 131.0
+offset_right = 127.0
+offset_bottom = 264.0
+mouse_filter = 2
+color = Color(0.7162962, 0.71629626, 0.7162961, 1)
+
+[node name="Door2" type="Control" parent="CanvasLayer/Doors"]
+anchors_preset = 0
+offset_left = 165.0
+offset_top = 720.0
+offset_right = 375.0
+offset_bottom = 930.0
+mouse_filter = 2
+
+[node name="Hotspot" type="Area2D" parent="CanvasLayer/Doors/Door2"]
+position = Vector2(105, 105)
+script = ExtResource("1_k0g1m")
+hotspot_id = "door_2"
+one_shot = false
+active = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/Doors/Door2/Hotspot"]
+position = Vector2(-2, -2)
+shape = SubResource("RectangleShape2D_door_2")
+
+[node name="Fog" type="ColorRect" parent="CanvasLayer/Doors/Door2"]
+z_index = 3
+material = SubResource("ShaderMaterial_fog")
+layout_mode = 0
+offset_left = 6.0
+offset_top = -18.0
+offset_right = 204.0
+offset_bottom = 118.0
+mouse_filter = 2
+color = Color(0.7162962, 0.71629626, 0.7162961, 1)
+
+[node name="Door3" type="Control" parent="CanvasLayer/Doors"]
+anchors_preset = 0
+offset_left = 420.0
+offset_top = 355.0
+offset_right = 535.0
+offset_bottom = 605.0
+mouse_filter = 2
+
+[node name="Hotspot" type="Area2D" parent="CanvasLayer/Doors/Door3"]
+position = Vector2(57.5, 125)
+script = ExtResource("1_k0g1m")
+hotspot_id = "door_3"
+one_shot = false
+active = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/Doors/Door3/Hotspot"]
+position = Vector2(4.5, 23)
+shape = SubResource("RectangleShape2D_door_3")
+
+[node name="Fog" type="ColorRect" parent="CanvasLayer/Doors/Door3"]
+z_index = 3
+material = SubResource("ShaderMaterial_fog")
+layout_mode = 0
+offset_left = -8.0
+offset_top = 136.0
+offset_right = 126.0
+offset_bottom = 272.0
+mouse_filter = 2
+color = Color(0.7162962, 0.71629626, 0.7162961, 1)
+
+[node name="Door4" type="Control" parent="CanvasLayer/Doors"]
+anchors_preset = 0
+offset_left = 155.0
+offset_top = 30.0
+offset_right = 385.0
+offset_bottom = 250.0
+mouse_filter = 2
+
+[node name="Hotspot" type="Area2D" parent="CanvasLayer/Doors/Door4"]
+position = Vector2(115, 110)
+script = ExtResource("1_k0g1m")
+hotspot_id = "door_4"
+one_shot = false
+active = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/Doors/Door4/Hotspot"]
+shape = SubResource("RectangleShape2D_door_4")
+
+[node name="Fog" type="ColorRect" parent="CanvasLayer/Doors/Door4"]
+z_index = 3
+material = SubResource("ShaderMaterial_fog")
+layout_mode = 0
+offset_left = 53.0
+offset_top = 113.0
+offset_right = 172.0
+offset_bottom = 220.0
+mouse_filter = 2
+color = Color(0.7162962, 0.71629626, 0.7162961, 1)

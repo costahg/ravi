@@ -1,0 +1,628 @@
+[gd_scene load_steps=59 format=3 uid="uid://diachm2rfh2mx"]
+
+[ext_resource type="Script" uid="uid://vjccydmum12g" path="res://scripts/components/hotspot.gd" id="1_hotspot"]
+[ext_resource type="Script" uid="uid://cdts8tldlynsb" path="res://scripts/rooms/room_2_controller.gd" id="1_room2_controller"]
+[ext_resource type="PackedScene" uid="uid://bto3gsqr453yv" path="res://scenes/components/protagonist.tscn" id="2_protagonist"]
+[ext_resource type="Texture2D" uid="uid://ba7boskdj68br" path="res://assets/sprites/Room2BackGround.png" id="3_background"]
+[ext_resource type="Texture2D" uid="uid://hrbud58777bj" path="res://assets/sprites/Room2Masc.png" id="4_mask"]
+[ext_resource type="Texture2D" uid="uid://bq8y8ktey5h2i" path="res://assets/sprites/Room2Objects.png" id="5_objects"]
+[ext_resource type="Texture2D" uid="uid://ch52nlhyv0ps4" path="res://assets/sprites/Room2Items.png" id="6_items"]
+[ext_resource type="Script" uid="uid://c84nfkp2scl82" path="res://scripts/components/draggable.gd" id="7_draggable"]
+[ext_resource type="Script" uid="uid://cwqc5pbfntlgj" path="res://scripts/components/drop_zone.gd" id="8_drop_zone"]
+[ext_resource type="Texture2D" uid="uid://345ivk4ua4kq" path="res://assets/sprites/Room2Transition1024x1536_7C3L.png" id="9_transition"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dirt_mask_frame_0"]
+atlas = ExtResource("4_mask")
+region = Rect2(0, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dirt_mask_frame_1"]
+atlas = ExtResource("4_mask")
+region = Rect2(1024, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dirt_mask_frame_2"]
+atlas = ExtResource("4_mask")
+region = Rect2(0, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dirt_mask_frame_3"]
+atlas = ExtResource("4_mask")
+region = Rect2(1024, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dishes_before"]
+atlas = ExtResource("5_objects")
+region = Rect2(0, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_clothes_before"]
+atlas = ExtResource("5_objects")
+region = Rect2(2048, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sweep_before"]
+atlas = ExtResource("5_objects")
+region = Rect2(4096, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dishes_after"]
+atlas = ExtResource("5_objects")
+region = Rect2(1024, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_clothes_after"]
+atlas = ExtResource("5_objects")
+region = Rect2(3072, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sweep_after"]
+atlas = ExtResource("5_objects")
+region = Rect2(5120, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_0"]
+atlas = ExtResource("9_transition")
+region = Rect2(0, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_1"]
+atlas = ExtResource("9_transition")
+region = Rect2(1024, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_2"]
+atlas = ExtResource("9_transition")
+region = Rect2(2048, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_3"]
+atlas = ExtResource("9_transition")
+region = Rect2(3072, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_4"]
+atlas = ExtResource("9_transition")
+region = Rect2(4096, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_5"]
+atlas = ExtResource("9_transition")
+region = Rect2(5120, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_6"]
+atlas = ExtResource("9_transition")
+region = Rect2(6144, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_7"]
+atlas = ExtResource("9_transition")
+region = Rect2(0, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_8"]
+atlas = ExtResource("9_transition")
+region = Rect2(1024, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_9"]
+atlas = ExtResource("9_transition")
+region = Rect2(2048, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_10"]
+atlas = ExtResource("9_transition")
+region = Rect2(3072, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_11"]
+atlas = ExtResource("9_transition")
+region = Rect2(4096, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_12"]
+atlas = ExtResource("9_transition")
+region = Rect2(5120, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_13"]
+atlas = ExtResource("9_transition")
+region = Rect2(6144, 1536, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_14"]
+atlas = ExtResource("9_transition")
+region = Rect2(0, 3072, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_15"]
+atlas = ExtResource("9_transition")
+region = Rect2(1024, 3072, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_16"]
+atlas = ExtResource("9_transition")
+region = Rect2(2048, 3072, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_17"]
+atlas = ExtResource("9_transition")
+region = Rect2(3072, 3072, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_18"]
+atlas = ExtResource("9_transition")
+region = Rect2(4096, 3072, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_19"]
+atlas = ExtResource("9_transition")
+region = Rect2(5120, 3072, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_room2_transition_frame_20"]
+atlas = ExtResource("9_transition")
+region = Rect2(6144, 3072, 1024, 1536)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_room2_transition"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_9")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_10")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_11")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_12")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_13")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_14")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_15")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_16")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_17")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_18")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_19")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_room2_transition_frame_20")
+}],
+"loop": false,
+"name": &"transition",
+"speed": 12.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dish_item"]
+atlas = ExtResource("6_items")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dish_dirt_area"]
+size = Vector2(110, 110)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dish_dirt_item"]
+atlas = ExtResource("6_items")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sponge_item"]
+atlas = ExtResource("6_items")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dish_sponge"]
+size = Vector2(72, 72)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_basket_item"]
+atlas = ExtResource("6_items")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_clothes_basket"]
+size = Vector2(216.66666, 167.33331)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_cloth_item"]
+atlas = ExtResource("6_items")
+region = Rect2(320, 0, 64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_cloth_item"]
+size = Vector2(84, 84)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_broom_item"]
+atlas = ExtResource("6_items")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sweep_broom"]
+size = Vector2(104, 104)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sweep_target_top"]
+size = Vector2(270, 258)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sweep_target_bottom"]
+size = Vector2(270, 404)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dishes_zone"]
+size = Vector2(196, 188)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_clothes_zone"]
+size = Vector2(224, 208)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sweep_zone"]
+size = Vector2(188, 268)
+
+[node name="Room2" type="Node2D"]
+script = ExtResource("1_room2_controller")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Background" type="TextureRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("3_background")
+expand_mode = 1
+
+[node name="DirtMask" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MaskFrame0" type="TextureRect" parent="CanvasLayer/DirtMask"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_dirt_mask_frame_0")
+expand_mode = 1
+
+[node name="MaskFrame1" type="TextureRect" parent="CanvasLayer/DirtMask"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_dirt_mask_frame_1")
+expand_mode = 1
+
+[node name="MaskFrame2" type="TextureRect" parent="CanvasLayer/DirtMask"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_dirt_mask_frame_2")
+expand_mode = 1
+
+[node name="MaskFrame3" type="TextureRect" parent="CanvasLayer/DirtMask"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_dirt_mask_frame_3")
+expand_mode = 1
+
+[node name="DirtyStates" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DishesBefore" type="TextureRect" parent="CanvasLayer/DirtyStates"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_dishes_before")
+expand_mode = 1
+
+[node name="ClothesBefore" type="TextureRect" parent="CanvasLayer/DirtyStates"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_clothes_before")
+expand_mode = 1
+
+[node name="SweepBefore" type="TextureRect" parent="CanvasLayer/DirtyStates"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_sweep_before")
+expand_mode = 1
+
+[node name="Vassoura" type="Sprite2D" parent="CanvasLayer/DirtyStates/SweepBefore"]
+position = Vector2(66.28, 619.29)
+scale = Vector2(1.5625, 1.78125)
+texture = ExtResource("6_items")
+hframes = 6
+
+[node name="CleanStates" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DishesAfter" type="TextureRect" parent="CanvasLayer/CleanStates"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_dishes_after")
+expand_mode = 1
+
+[node name="ClothesAfter" type="TextureRect" parent="CanvasLayer/CleanStates"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_clothes_after")
+expand_mode = 1
+
+[node name="SweepAfter" type="TextureRect" parent="CanvasLayer/CleanStates"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_sweep_after")
+expand_mode = 1
+
+[node name="TransitionAnimation" type="AnimatedSprite2D" parent="CanvasLayer"]
+visible = false
+z_index = 4
+texture_filter = 3
+scale = Vector2(0.52734375, 0.62500006)
+sprite_frames = SubResource("SpriteFrames_room2_transition")
+animation = &"transition"
+frame = 20
+frame_progress = 1.0
+centered = false
+
+[node name="DishInteraction" type="Node2D" parent="CanvasLayer"]
+visible = false
+z_index = 6
+position = Vector2(249, 463)
+scale = Vector2(1.5, 1.5)
+metadata/_edit_group_ = true
+
+[node name="Plate" type="Sprite2D" parent="CanvasLayer/DishInteraction"]
+scale = Vector2(2, 2)
+texture = SubResource("AtlasTexture_dish_item")
+
+[node name="DirtArea" type="Area2D" parent="CanvasLayer/DishInteraction"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/DishInteraction/DirtArea"]
+shape = SubResource("RectangleShape2D_dish_dirt_area")
+
+[node name="DirtOverlay" type="Sprite2D" parent="CanvasLayer/DishInteraction"]
+scale = Vector2(2, 2)
+texture = SubResource("AtlasTexture_dish_dirt_item")
+
+[node name="Sponge" type="Area2D" parent="CanvasLayer/DishInteraction"]
+z_index = 1
+position = Vector2(112, 24)
+script = ExtResource("7_draggable")
+drag_id = "dish_sponge"
+snap_distance = 0.0
+active = false
+
+[node name="Sprite2D" type="Sprite2D" parent="CanvasLayer/DishInteraction/Sponge"]
+scale = Vector2(1.75, 1.75)
+texture = SubResource("AtlasTexture_sponge_item")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/DishInteraction/Sponge"]
+shape = SubResource("RectangleShape2D_dish_sponge")
+
+[node name="ClothesInteraction" type="Node2D" parent="CanvasLayer"]
+visible = false
+z_index = 6
+position = Vector2(278, 472)
+scale = Vector2(1.5, 1.5)
+metadata/_edit_group_ = true
+
+[node name="Basket" type="Area2D" parent="CanvasLayer/ClothesInteraction"]
+position = Vector2(0, 66)
+monitoring = false
+monitorable = false
+script = ExtResource("8_drop_zone")
+zone_id = "laundry_basket"
+
+[node name="Sprite2D" type="Sprite2D" parent="CanvasLayer/ClothesInteraction/Basket"]
+modulate = Color(0.854902, 0.803922, 0.658824, 1)
+scale = Vector2(2.4, 2.2)
+texture = SubResource("AtlasTexture_basket_item")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/ClothesInteraction/Basket"]
+shape = SubResource("RectangleShape2D_clothes_basket")
+
+[node name="Cloth1" type="Area2D" parent="CanvasLayer/ClothesInteraction"]
+z_index = 1
+position = Vector2(-150, -24)
+script = ExtResource("7_draggable")
+drag_id = "cloth_1"
+snap_distance = 300.0
+active = false
+
+[node name="Sprite2D" type="Sprite2D" parent="CanvasLayer/ClothesInteraction/Cloth1"]
+modulate = Color(0.94902, 0.4, 0.509804, 1)
+scale = Vector2(1.75, 1.75)
+texture = SubResource("AtlasTexture_cloth_item")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/ClothesInteraction/Cloth1"]
+shape = SubResource("RectangleShape2D_cloth_item")
+
+[node name="Cloth2" type="Area2D" parent="CanvasLayer/ClothesInteraction"]
+z_index = 1
+position = Vector2(0, -108)
+script = ExtResource("7_draggable")
+drag_id = "cloth_2"
+snap_distance = 300.0
+active = false
+
+[node name="Sprite2D" type="Sprite2D" parent="CanvasLayer/ClothesInteraction/Cloth2"]
+modulate = Color(0.380392, 0.65098, 0.964706, 1)
+scale = Vector2(1.75, 1.75)
+texture = SubResource("AtlasTexture_cloth_item")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/ClothesInteraction/Cloth2"]
+shape = SubResource("RectangleShape2D_cloth_item")
+
+[node name="Cloth3" type="Area2D" parent="CanvasLayer/ClothesInteraction"]
+z_index = 1
+position = Vector2(150, -24)
+script = ExtResource("7_draggable")
+drag_id = "cloth_3"
+snap_distance = 300.0
+active = false
+
+[node name="Sprite2D" type="Sprite2D" parent="CanvasLayer/ClothesInteraction/Cloth3"]
+modulate = Color(0.968627, 0.843137, 0.427451, 1)
+scale = Vector2(1.75, 1.75)
+texture = SubResource("AtlasTexture_cloth_item")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/ClothesInteraction/Cloth3"]
+shape = SubResource("RectangleShape2D_cloth_item")
+
+[node name="SweepInteraction" type="Node2D" parent="CanvasLayer"]
+visible = false
+z_index = 6
+metadata/_edit_group_ = true
+
+[node name="Broom" type="Area2D" parent="CanvasLayer/SweepInteraction"]
+position = Vector2(104, 684)
+script = ExtResource("7_draggable")
+drag_id = "sweep_broom"
+snap_distance = 0.0
+active = false
+
+[node name="Sprite2D" type="Sprite2D" parent="CanvasLayer/SweepInteraction/Broom"]
+scale = Vector2(2, 2)
+texture = SubResource("AtlasTexture_broom_item")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/SweepInteraction/Broom"]
+shape = SubResource("RectangleShape2D_sweep_broom")
+
+[node name="TopLeft" type="Area2D" parent="CanvasLayer/SweepInteraction"]
+position = Vector2(135, 351)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/SweepInteraction/TopLeft"]
+shape = SubResource("RectangleShape2D_sweep_target_top")
+
+[node name="TopRight" type="Area2D" parent="CanvasLayer/SweepInteraction"]
+position = Vector2(405, 351)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/SweepInteraction/TopRight"]
+shape = SubResource("RectangleShape2D_sweep_target_top")
+
+[node name="BottomLeft" type="Area2D" parent="CanvasLayer/SweepInteraction"]
+position = Vector2(135, 682)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/SweepInteraction/BottomLeft"]
+shape = SubResource("RectangleShape2D_sweep_target_bottom")
+
+[node name="BottomRight" type="Area2D" parent="CanvasLayer/SweepInteraction"]
+position = Vector2(405, 682)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/SweepInteraction/BottomRight"]
+shape = SubResource("RectangleShape2D_sweep_target_bottom")
+
+[node name="TaskZones" type="Node2D" parent="CanvasLayer"]
+
+[node name="DishesZone" type="Node2D" parent="CanvasLayer/TaskZones"]
+position = Vector2(110, 243)
+
+[node name="ApproachMarker" type="Marker2D" parent="CanvasLayer/TaskZones/DishesZone"]
+
+[node name="Hotspot" type="Area2D" parent="CanvasLayer/TaskZones/DishesZone"]
+script = ExtResource("1_hotspot")
+hotspot_id = "dishes"
+one_shot = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/TaskZones/DishesZone/Hotspot"]
+shape = SubResource("RectangleShape2D_dishes_zone")
+
+[node name="ClothesZone" type="Node2D" parent="CanvasLayer/TaskZones"]
+position = Vector2(414, 273)
+
+[node name="ApproachMarker" type="Marker2D" parent="CanvasLayer/TaskZones/ClothesZone"]
+
+[node name="Hotspot" type="Area2D" parent="CanvasLayer/TaskZones/ClothesZone"]
+script = ExtResource("1_hotspot")
+hotspot_id = "clothes"
+one_shot = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/TaskZones/ClothesZone/Hotspot"]
+shape = SubResource("RectangleShape2D_clothes_zone")
+
+[node name="SweepZone" type="Node2D" parent="CanvasLayer/TaskZones"]
+position = Vector2(104, 684)
+
+[node name="ApproachMarker" type="Marker2D" parent="CanvasLayer/TaskZones/SweepZone"]
+
+[node name="Hotspot" type="Area2D" parent="CanvasLayer/TaskZones/SweepZone"]
+script = ExtResource("1_hotspot")
+hotspot_id = "sweep"
+one_shot = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/TaskZones/SweepZone/Hotspot"]
+shape = SubResource("RectangleShape2D_sweep_zone")
+
+[node name="Protagonist" parent="CanvasLayer" instance=ExtResource("2_protagonist")]
+z_index = 5
+position = Vector2(272, 760)
+margin_top = 160.0
+margin_bottom = 220.0
+margin_left = 60.0
+margin_right = 60.0

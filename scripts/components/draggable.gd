@@ -122,16 +122,13 @@ func _finish_drag() -> void:
 
 func _find_drop_target() -> Area2D:
 	var closest_target: Area2D = null
-	var closest_distance: float = snap_distance
+	var closest_distance: float = INF
 
 	for area: Area2D in get_overlapping_areas():
 		if not area.is_in_group(DROP_TARGET_GROUP):
 			continue
 
 		var distance_to_target: float = global_position.distance_to(area.global_position)
-		if distance_to_target > snap_distance:
-			continue
-
 		if closest_target == null or distance_to_target < closest_distance:
 			closest_target = area
 			closest_distance = distance_to_target

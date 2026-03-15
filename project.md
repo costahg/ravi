@@ -1,14 +1,15 @@
 ## ABORDAGEM
 
-**Princípio central:** Construir os tijolos antes da casa.
+**Princípio central:** Construir os tijolos antes da casa, e a casa antes dos cômodos.
 
 ```
 FASE 0 ─ Projeto + Managers
 FASE 1 ─ 4 Componentes reutilizáveis + validação isolada
-FASE 2 ─ Sala 1 (composição: Hotspot + Revealer + EventChain)
-FASE 3 ─ Sala 2 (composição: Draggable + Hotspot + Revealer + EventChain)
-FASE 4 ─ Salas 3 e 4 (mecânicas específicas + componentes já prontos)
-FASE 5 ─ Fluxo completo + polimento + Android
+FASE 2 ─ Sala Principal / Hub de progressão
+FASE 3 ─ Sala 1 (COLETE)
+FASE 4 ─ Sala 2 (ORGANIZE)
+FASE 5 ─ Sala 3 (SOBREVIVA) + Sala Final
+FASE 6 ─ Fluxo completo + polimento + Android
 ```
 
 Cada fase tem checkpoint que impede avançar sem validação.
@@ -24,7 +25,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
 | DRY | Drag, Reveal, Hotspot escritos uma vez, usados em N salas |
 | Composição sobre herança | Nós Godot = composição natural |
 | Sinais para desacoplamento | Componentes emitem sinais, controllers reagem |
-| YAGNI | Nada de inventário, save system, menu complexo |
+| Protagonista recorrente | A protagonista existe no hub e em todas as salas jogáveis, reaproveitando uma cena/script base |
+| Ação por aproximação | Clique define destino; transições, coletas e minigames só disparam quando a protagonista alcança o alvo |
+| Animação contextual | `walking` e `idle` são padrão; `interact` só entra nos momentos explicitamente planejados |
+| YAGNI | Nada de inventário, save system, ou menu separado complexo |
 
 ## NAO_FAZER
 
@@ -34,7 +38,18 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - ❌ Hardcode de paths de cena (usar constantes em GameManager)
 - ❌ Polling em `_process` para detecção de click (usar `_input_event` de Area2D)
 - ❌ Criar sistemas que só servem uma sala (inline no controller)
+- ❌ Disparar troca de sala, coleta ou minigame antes da protagonista alcançar o alvo
+- ❌ Usar `interact` como resposta padrão para todo clique ou toda troca de estado
+- ❌ Limitar a protagonista com colisão de cenário; os limites de movimento devem vir de margens configuráveis por fase
 - ❌ Assets finais antes da mecânica funcionar com placeholders
+
+## PREMISSA_GLOBAL_DA_PROTAGONISTA
+
+- A protagonista aparece na sala principal e em todas as salas jogáveis.
+- Clique/toque sempre define um destino para a protagonista dentro das margens da fase.
+- Ações contextuais de sala só são executadas quando ela alcança o alvo associado.
+- A animação padrão da movimentação é `walking`; parada é `idle`; `interact` fica reservada para beats específicos definidos depois.
+- Cada fase define suas margens de navegação (`top`, `bottom`, `left`, `right`) em vez de usar colisão de cenário para travar movimento.
 
 ---
 
@@ -65,9 +80,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
   - [X] MT-0.2.3: Implementar sinais: `room_completed(room_id: int)`, `transition_started`, `transition_finished`
   - [X] MT-0.2.4: Criar `CanvasLayer` filho com `ColorRect` fullscreen preto (para fades), z_index=100
   - [X] MT-0.2.5: Implementar `func transition_to_room(room_id: int)`: valida id, seta state TRANSITIONING, fade to black via Tween no ColorRect, `get_tree().change_scene_to_file()`, fade from black, seta PLAYING
-  - [X] MT-0.2.6: Implementar `func complete_room(room_id: int)`: marca dict, emite sinal, chama `transition_to_room(room_id + 1)` — ou cena final se room_id == 4
+  - [X] MT-0.2.6: Implementar `func complete_room(room_id: int)`: marca dict, emite sinal e centraliza a progressão pós-sala
   - [X] MT-0.2.7: Registrar como Autoload "GameManager" em Project Settings
-  - [X] MT-0.2.8: Criar `scripts/core/game_manager_test.gd`, `scenes/ui/test_game_manager_transition.tscn` e `scenes/rooms/room_1.tscn` placeholder mínima. A cena de teste chama `GameManager.transition_to_room(1)` em `_ready` e valida o fade. `room_1.tscn` será expandida em `MT-2.1.1`
+  - [X] MT-0.2.8: Criar `scripts/core/game_manager_test.gd`, `scenes/ui/test_game_manager_transition.tscn` e `scenes/rooms/room_1.tscn` placeholder mínima. A cena de teste chama `GameManager.transition_to_room(1)` em `_ready` e valida o fade. `room_1.tscn` será expandida em `MT-3.1.1`
+  - [X] MT-0.2.9: Refatorar fluxo do `GameManager` para a Sala Principal: adicionar `MAIN_MENU_SCENE_PATH`, `func return_to_hub()`, `func get_next_room_to_unlock() -> int`, `func can_enter_room(room_id: int) -> bool`. Atualizar `complete_room()` para voltar à sala principal quando `room_id < 4` e só ir para `final_screen` ao concluir a sala final
 - **Criterios de Aceitacao:**
   1. `GameManager` acessível globalmente
   2. Fade to/from black funciona
@@ -116,7 +132,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Classificacao:** Confirmado
 
 #### Tarefa 1.2: Draggable (Objeto arrastável)
-- **Descricao:** Nó que pode ser arrastado pelo jogador e detecta drop em zonas alvo. Usado em Sala 2 (vassoura, roupa) e Sala 4 (puzzle)
+- **Descricao:** Nó que pode ser arrastado pelo jogador e detecta drop em zonas alvo. Usado em Sala 2 (vassoura, roupa) e na Sala Final (puzzle)
 - **Diretorio:** /scripts/components/
 - **Micro-Tasks:**
   - [X] MT-1.2.1: Criar `draggable.gd` extends `Area2D` com exports: `drag_id: String`, `snap_back: bool = true`, `snap_distance: float = 40.0`, `active: bool = true`
@@ -162,133 +178,212 @@ Cada fase tem checkpoint que impede avançar sem validação.
   4. Funções arbitrárias podem ser steps (Callable genérico)
 - **Classificacao:** Confirmado
 
-**Checkpoint FASE 1:** 4 componentes funcionam isoladamente em cenas de teste. Hotspot responde a touch, Draggable faz snap, Revealer anima cor, EventChain orquestra sequência. Todos testados antes de montar qualquer sala.
+#### Tarefa 1.5: Protagonista Reutilizável
+- **Descricao:** Cena e script base da protagonista para clique-to-move com margens por fase e gatilho de chegada
+- **Diretorio:** /scenes/components/ e /scripts/components/
+- **Observacao de continuidade:** `protagonist.tscn` ja existe no workspace. O hub ainda usa uma protagonista provisoria hardcoded em `main_menu.tscn` + `main_menu_controller.gd`. Os proximos MTs desta tarefa e os MTs `2.1.6` + `2.2.6` devem convergir o projeto para uma unica protagonista reutilizavel
+- **Micro-Tasks:**
+  - [x] MT-1.5.1: Criar `protagonist.tscn` como cena reutilizável da protagonista. Root `Node2D`, visual placeholder e suporte às animações `idle`, `walking`, `interact`
+  - [X] MT-1.5.2: Criar `protagonist_actor.gd` com API de movimento por clique/toque. Exports mínimos: `move_speed`, `arrival_threshold`, `margin_top`, `margin_bottom`, `margin_left`, `margin_right`
+  - [X] MT-1.5.3: Implementar sinal de chegada (`destination_reached` ou equivalente) para que controllers disparem ações somente após a protagonista alcançar o alvo. O destino deve ser clampado pelas margens da fase
+  - [X] MT-1.5.4: Criar cena de teste dedicada validando `idle`, `walking`, clamp por margens e a regra de não usar `interact` por padrão
+- **Criterios de Aceitacao:**
+  1. A protagonista responde a mouse e touch
+  2. O movimento respeita margens configuráveis da fase
+  3. Controllers conseguem esperar a chegada antes de executar uma ação
+  4. `interact` não é disparada automaticamente em toda ação contextual
+- **Classificacao:** Confirmado
+
+**Checkpoint FASE 1:** 4 componentes funcionam isoladamente em cenas de teste. Hotspot responde a touch, Draggable faz snap, Revealer anima cor, EventChain orquestra sequência, e a Tarefa 1.5 fecha a base reutilizável da protagonista antes da integração no hub e nas salas.
 
 ---
 
-### FASE 2: Sala 1 — COLETE
-**Objetivo:** Primeira sala completa, valida que a composição de componentes funciona em contexto real
-**Subsistemas cobertos:** Hotspot + Revealer + EventChain + GameManager
+### FASE 2: Sala Principal — Hub/Menu
+**Objetivo:** Criar a sala principal antes das salas jogáveis. Ela funciona como menu diegético, gate de progressão e primeira integração real da protagonista
+**Subsistemas cobertos:** GameManager + Hotspot + GPUParticles2D + protagonista + fluxo de navegação
 
-#### Tarefa 2.1: Layout da Cena
-- **Descricao:** Montar cena visual do jardim com elementos posicionados
-- **Diretorio:** /scenes/rooms/
+#### Tarefa 2.1: Layout da Sala Principal
+- **Descricao:** Montar a sala central com 4 saídas cardeais, uma para cada sala do jogo, já prevendo a circulação da protagonista
+- **Diretorio:** /scenes/ui/ ou /scenes/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-2.1.1: Expandir/substituir o placeholder de `room_1.tscn` com `Node2D` root. Adicionar sprite de fundo (jardim apagado, placeholder retângulo se necessário). Dividir visualmente em 4 quadrantes para os canteiros
-  - [ ] MT-2.1.2: Adicionar 4 `Sprite2D` para canteiros (rosa, hibisco, lírio, girassol), cada um com filho `Revealer` configurado `start_hidden = true`. Posicionar nos quadrantes
-  - [ ] MT-2.1.3: Adicionar `Sprite2D` do bolo no centro (incompleto). Adicionar `Sprite2D` do presente no canto (fechado). Adicionar `Sprite2D` do furão (invisível, `visible = false`)
-  - [ ] MT-2.1.4: Adicionar 4 `Hotspot` (Area2D + CollisionShape2D) posicionados onde as flores estão escondidas. Configurar `hotspot_id` como "rosa", "hibisco", "lirio", "girassol" e `one_shot = true`
-  - [ ] MT-2.1.5: Adicionar overlay escuro opcional (Sprite2D ou ColorRect semi-transparente para névoa)
+  - [X] MT-2.1.1: Criar `main_menu.tscn` como a sala principal. Root `Node2D`. Adicionar fundo/placeholder da sala central
+  - [X] MT-2.1.2: Posicionar 4 portas/corredores com leitura espacial fixa: direita = Sala 1 COLETE, baixo = Sala 2 ORGANIZE, esquerda = Sala 3 SOBREVIVA, cima = Sala Final
+  - [X] MT-2.1.3: Adicionar `Hotspot` ou `Area2D + CollisionShape2D` para cada porta com ids `door_1`, `door_2`, `door_3`, `door_4`
+  - [X] MT-2.1.4: Adicionar partículas de névoa (`GPUParticles2D`) nas portas bloqueadas. Estado inicial: só a porta da direita fica livre; baixo, esquerda e cima começam bloqueadas com névoa
+  - [X] MT-2.1.5: Adicionar feedback visual para portas concluídas/passadas (apagada, fechada ou sem destaque), deixando claro que não podem ser reentradas
+  - [X] MT-2.1.6: Instanciar `protagonist.tscn` no hub com posição inicial, ordem de render e margens de navegação da sala principal, substituindo o node provisório `CanvasLayer/Protagonist` de `main_menu.tscn`. Não manter duas protagonistas em paralelo
 - **Criterios de Aceitacao:**
   1. Cena renderiza em 540x960 sem cortes
-  2. Tudo começa escuro/cinza
-  3. 4 hotspots posicionados e com collision shapes
+  2. A leitura espacial das portas é clara
+  3. Só a porta da direita está acessível no início
+  4. Toda porta bloqueada exibe névoa visível
+  5. A protagonista existe visualmente na sala principal e consegue circular sem depender de colisão de cenário
 - **Classificacao:** Confirmado
 
-#### Tarefa 2.2: Controller da Sala 1
-- **Descricao:** Script que conecta hotspots aos revealers e orquestra conclusão
+#### Tarefa 2.2: Controller da Sala Principal
+- **Descricao:** Script que lê o progresso salvo no `GameManager`, liga/desliga as portas corretamente e orquestra o movimento da protagonista no hub
 - **Diretorio:** /scripts/rooms/
+- **Observacao de continuidade:** no estado atual do workspace, `main_menu_controller.gd` concentra lógica provisória de movimento/animação da protagonista do hub. Ao executar `MT-1.5.2`, `MT-1.5.3`, `MT-2.1.6` e `MT-2.2.6`, migrar o hub para usar `protagonist.tscn` + `protagonist_actor.gd`, removendo a duplicação do controller
 - **Micro-Tasks:**
-  - [ ] MT-2.2.1: Criar `room_1_controller.gd` extends `Node2D` (root da cena). `@onready` refs para os 4 Hotspots, 4 canteiros com Revealer, bolo, presente, furão. Var `_flowers_collected: int = 0`
-  - [ ] MT-2.2.2: No `_ready`, conectar sinal `pressed` de cada Hotspot a `_on_flower_collected(hotspot_id: String)`. Nessa função: encontrar canteiro correspondente, chamar `$Revealer.reveal()`, incrementar `_flowers_collected`, tocar SFX via `AudioManager.play_sfx(...)`. Se `_flowers_collected == 4`, chamar `_start_finale()`
-  - [ ] MT-2.2.3: Implementar `_start_finale()` usando `EventChain`: criar instância (ou nó já na cena), popular com steps: (1) tocar som suave, (2) trocar sprite do bolo para decorado, (3) fazer presente tremer (Tween position wiggle), (4) setar furão `visible = true` com scale de 0→1, (5) fade out da névoa, (6) chamar `GameManager.complete_room(1)`. Conectar `chain_completed` se necessário
-  - [ ] MT-2.2.4: Testar fluxo completo: clicar 4 hotspots → revelações → finale → transição para próxima sala
+  - [X] MT-2.2.1: Criar `main_menu_controller.gd` extends `Node2D`. `@onready` refs para as 4 portas, os 4 emissores de névoa e a protagonista
+  - [X] MT-2.2.2: Implementar `_refresh_doors_state()` usando `GameManager.rooms_completed` e `GameManager.get_next_room_to_unlock()`
+  - [X] MT-2.2.3: Regra da sala principal: só a próxima sala da sequência pode ser acessada. Salas futuras ficam bloqueadas com névoa. Salas já concluídas ficam inacessíveis e sem reentrada
+  - [X] MT-2.2.4: Conectar clique/toque da porta liberada para uma ação contextual de navegação. O controller deve mandar a protagonista caminhar até a porta clicada e só então chamar `GameManager.transition_to_room(target_room_id)`. Clique em porta bloqueada ou já concluída não faz transição
+  - [X] MT-2.2.5: Opcional: feedback sutil em porta bloqueada (som abafado, tremida leve ou flash de névoa), sem quebrar a regra de progressão
+  - [X] MT-2.2.6: Implementar clique/toque global no chão do hub para mover a protagonista livremente sem trocar de sala. Se o clique for numa porta liberada, a troca de cena continua pendente até a protagonista chegar. Nesta etapa, remover o uso automático de `interact` no hub; o fluxo padrão deve ser `walking -> idle -> troca de cena`
 - **Criterios de Aceitacao:**
-  1. Cada flor revela canteiro correspondente
-  2. Só dispara finale quando 4/4 coletadas
-  3. Sequência de finale executa na ordem com timings
-  4. Ao final, GameManager faz transição para Sala 2
-  5. Hotspots desativam após coleta (one_shot)
+  1. Início do jogo: apenas Sala 1 disponível
+  2. Após concluir Sala 1: Sala 1 não pode mais ser aberta e Sala 2 é desbloqueada
+  3. Após concluir Sala 2: Sala 3 é desbloqueada
+  4. Após concluir Sala 3: a porta de cima (Sala Final) é desbloqueada
+  5. Não existe caminho para entrar em sala futura nem para repetir sala concluída
+  6. A troca de sala no hub nunca é instantânea: ela só acontece depois que a protagonista alcança a porta
 - **Classificacao:** Confirmado
 
-**Checkpoint FASE 2:** Sala 1 jogável do início ao fim. Composição de Hotspot + Revealer + EventChain validada em contexto real. Transição para cena seguinte funciona.
+#### Tarefa 2.3: Integração de Progressão
+- **Descricao:** Ajustar o fluxo global para que toda conclusão volte para a sala principal antes da próxima porta abrir
+- **Diretorio:** /scripts/core/ e /scenes/ui/
+- **Micro-Tasks:**
+  - [X] MT-2.3.1: Executar a refatoração descrita em `MT-0.2.9` no `GameManager`
+  - [X] MT-2.3.2: Fazer `GameManager.complete_room(1..3)` retornar para `main_menu.tscn` após marcar a sala como concluída
+  - [X] MT-2.3.3: Manter `GameManager.complete_room(4)` levando para `final_screen.tscn`
+  - [x] MT-2.3.4: Criar ou adaptar cena de teste para validar o loop `hub -> sala -> hub`
+- **Criterios de Aceitacao:**
+  1. O fluxo real do jogo passa sempre pela sala principal entre as salas
+  2. A progressão respeita a ordem direita → baixo → esquerda → cima
+  3. O estado visual das portas acompanha corretamente `rooms_completed`
+- **Classificacao:** Confirmado
+
+**Checkpoint FASE 2:** Sala principal funcional como hub. Progressão e bloqueios estão corretos. Antes de considerar a integração da protagonista do hub encerrada, substituir a implementação provisória por `protagonist.tscn` + `protagonist_actor.gd` e fechar `MT-2.1.6` + `MT-2.2.6`.
 
 ---
 
-### FASE 3: Sala 2 — ORGANIZE
-**Objetivo:** Implementar 3 minigames curtos usando componentes existentes + lógica específica mínima
-**Subsistemas cobertos:** Draggable + Hotspot + Revealer + EventChain + lógica de minigame
+### FASE 3: Sala 1 — COLETE
+**Objetivo:** Primeira sala jogável completa, validando protagonista + Hotspot + Revealer + EventChain em contexto real
+**Subsistemas cobertos:** Protagonista + Hotspot + Revealer + EventChain + GameManager
 
-#### Tarefa 3.1: Cena e Controller da Sala 2
-- **Descricao:** Layout da casa bagunçada e controller que gerencia progresso dos 3 minigames
+#### Tarefa 3.1: Layout da Cena
+- **Descricao:** Montar o jardim com uma arte base única, 4 layers fullscreen de flores recortadas e pontos de ação para a protagonista
+- **Diretorio:** /scenes/rooms/
+- **Micro-Tasks:**
+  - [X] MT-3.1.1: Expandir/substituir o placeholder de `room_1.tscn` com `Node2D` root. Adicionar fundo base do jardim em `TextureRect` fullscreen, no mesmo padrão visual prático adotado no hub
+  - [X] MT-3.1.2: Adicionar 4 `TextureRect` fullscreen para as layers de flores (rosa, hibisco, lírio, girassol), cada uma recortada da arte base com o mesmo tamanho do background e transparência fora da região da flor. Cada layer recebe um filho `Revealer` com `start_hidden = true`, usando `modulate` para revelar apenas a flor correspondente
+  - [X] MT-3.1.3: Adicionar a protagonista na sala, uma flor-origem central em fila (hibisco -> rosas vermelhas -> lirios -> girassois), com cada flor aparecendo sob demanda no centro. `Presente` comeca invisivel e `Furao` comeca oculto. Nao criar `bolo` separado: o payoff central usa o `Center` e o `Background` ja preparado
+  - [X] MT-3.1.4: Adicionar 4 `Hotspot` (Area2D + CollisionShape2D) alinhados exatamente as mascaras das flores recortadas e 4 `Marker2D`/pontos de aproximacao para a protagonista. Configurar `hotspot_id` como "rosa", "hibisco", "lirio", "girassol", `one_shot = true` e deixar somente o hotspot inicial habilitado; os demais ficam sob demanda
+  - [X] MT-3.1.5: Em vez de overlay escuro, adicionar 4 highlights sutis de destino, um por flor, invisiveis no inicio e usados somente quando a flor correspondente estiver em transito/na mao da protagonista
+- **Criterios de Aceitacao:**
+  1. Cena renderiza em 540x960 sem cortes
+  2. Flores centrais e `Presente` comecam ocultos; `Furao` comeca oculto; os destinos usam highlights sutis sob demanda
+  3. Fundo e 4 layers de flores permanecem alinhados pixel a pixel
+  4. 4 hotspots posicionados e com collision shapes
+- **Classificacao:** Confirmado
+
+#### Tarefa 3.2: Controller da Sala 1
+- **Descricao:** Script que conecta hotspots, protagonista e revealers, orquestrando a lógica de restaurar as flores
+- **Diretorio:** /scripts/rooms/
+- **Micro-Tasks:**
+  - [X] MT-3.2.1: Criar `room_1_controller.gd` extends `Node2D` (root da cena). `@onready` refs para os 4 Hotspots, 4 layers de flores com Revealer, fila central de flores (`FlowerOrigin` + 4 sprites), 4 `ApproachMarker`, 4 destination hints sutis, protagonista, `Center`, `Presente` e `Furao`. Vars minimas: `_flowers_restored: int = 0`, `_current_flower_index: int = 0`
+  - [X] MT-3.2.2: No `_ready`, mostrar somente a primeira flor da fila central e habilitar apenas o hotspot correspondente. Ao clicar no hotspot ativo, o controller deve: (1) mostrar o hint sutil do destino correspondente, (2) mandar a protagonista ir primeiro ate a flor central atual, (3) depois ate o `ApproachMarker` do alvo, (4) ao chegar, esconder a flor central atual, desligar o hint, revelar a layer correspondente, tocar SFX via `AudioManager.play_sfx(...)`, incrementar `_flowers_restored` e habilitar/mostrar a proxima flor da fila. Se `_flowers_restored == 4`, chamar `_start_finale()`
+  - [X] MT-3.2.3: Implementar `_start_finale()` usando `EventChain`: criar instancia (ou no ja na cena), popular com steps: (1) tocar som suave, (2) rodar `Background` na animacao `surprise` (`GardenSurprise`), (3) ocultar `Center` para expor o payoff central do fundo, (4) fazer `Presente` aparecer com fade no ponto mais baixo configurado, (5) setar `Furao.visible = true` com scale de 0→1, (6) chamar `GameManager.complete_room(1)`. Conectar `chain_completed` se necessario
+  - [X] MT-3.2.4: Testar fluxo completo: primeira flor aparece no centro → hotspot correspondente eh o unico ativo → protagonista vai ao centro → protagonista leva a flor ao alvo com hint sutil ativo → reveal da camada correta → proxima flor aparece → apos 4/4 toca `GardenSurprise`, `Center` some, `Presente` faz fade in e retorna para a sala principal
+- **Criterios de Aceitacao:**
+  1. Cada hotspot revela somente a layer da flor correspondente e so fica ativo no seu turno
+  2. Cada restauracao so acontece depois que a protagonista completa o trajeto centro -> alvo
+  3. A proxima flor so aparece depois que a anterior for entregue corretamente
+  4. A sequencia final executa `GardenSurprise`, oculta `Center`, faz `Presente` aparecer com fade e revela `Furao`
+  5. Ao final, `GameManager` retorna para a Sala Principal liberando a Sala 2
+  6. Hotspots concluidos permanecem desativados apos uso (`one_shot`)
+- **Classificacao:** Confirmado
+
+**Checkpoint FASE 3:** Sala 1 jogavel do inicio ao fim. A fila central de flores funciona em ordem, os hotspots/hints acompanham a flor ativa, `GardenSurprise` roda ao concluir 4/4, `Center` some no payoff, `Presente` entra com fade, `Furao` aparece e o retorno ao hub funciona.
+
+---
+
+### FASE 4: Sala 2 — ORGANIZE
+**Objetivo:** Implementar uma Sala 2 simplificada usando os assets já prontos, substituindo 3 minigames separados por 3 interações rápidas integradas à própria cena
+**Subsistemas cobertos:** Protagonista + Hotspot + Draggable + DropZone + Revealer + EventChain + AnimatedSprite2D
+
+#### Tarefa 4.1: Cena Base e Controller da Sala 2
+- **Descricao:** Montar a casa bagunçada usando `Room2BackGround.png`, `Room2Masc.png` e `Room2Objects.png`, com um controller único que orquestra as 3 tarefas de organização e o gating por aproximação da protagonista
 - **Diretorio:** /scenes/rooms/ e /scripts/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-3.1.1: Criar `room_2.tscn` com fundo de casa bagunçada. Dividir em 3 zonas visuais: área de chão (poeira), pia (louça), canto (roupa). Cada zona tem Revealer para transformação posterior
-  - [ ] MT-3.1.2: Criar `room_2_controller.gd` com var `_minigames_done: int = 0`. Implementar `_on_minigame_completed(minigame_id: String)`: incrementa, revela zona correspondente, se 3/3 chama `_start_transformation()`
-  - [ ] MT-3.1.3: Criar sinal ou grupo para conectar cada minigame ao controller
+  - [X] MT-4.1.1: Criar `room_2.tscn` com root `Node2D`, protagonista, fundo limpo usando `res://assets/sprites/Room2BackGround.png`, overlay de sujeira usando `res://assets/sprites/Room2Masc.png`, layers/recortes de `res://assets/sprites/Room2Objects.png` para os estados antes/depois de louça, roupa e cadeira, 3 zonas clicáveis (`dishes`, `clothes`, `sweep`) e 3 `Marker2D` de aproximação
+  - [X] MT-4.1.2: Criar `room_2_controller.gd` com `var _tasks_done: Dictionary = {"dishes": false, "clothes": false, "sweep": false}` e `var _active_task: String = ""`. Ao clicar numa zona livre, a protagonista vai até o marker correspondente e só então a tarefa daquela zona é habilitada
+  - [X] MT-4.1.3: Implementar no controller a trava de tarefa ativa, a conclusão de cada tarefa, a troca visual "sujo -> limpo" via `Room2Objects.png`, e o gatilho `_start_transformation()` quando `dishes`, `clothes` e `sweep` estiverem concluídas
 - **Criterios de Aceitacao:**
-  1. Cena renderiza corretamente
-  2. Controller rastreia progresso
-  3. Minigames podem ser feitos em qualquer ordem
-- **Classificacao:** Confirmado
+  1. Cena renderiza corretamente com os assets finais da Room 2
+  2. Controller rastreia o progresso das 3 tarefas
+  3. As tarefas podem ser feitas em qualquer ordem
+  4. Nenhuma tarefa abre instantaneamente no clique; sempre espera a chegada da protagonista
+  5. Só existe uma tarefa ativa por vez
+- **Classificacao:** Confirmado (correção de escopo)
 
-#### Tarefa 3.2: Minigame Varrer
-- **Descricao:** Arrastar vassoura sobre 3 áreas de poeira até sumirem. Usa Draggable adaptado
-- **Diretorio:** /scripts/rooms/room_2/
+#### Tarefa 4.2: Interação Louça
+- **Descricao:** Limpeza curta da louça integrada à própria cena, sem minigame separado, usando os itens já prontos em `Room2Items.png`
+- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-3.2.1: Criar sprite da vassoura como `Area2D` que segue touch/mouse (similar a Draggable mas sem snap — segue continuamente). Script `sweep_brush.gd`: em `_input`, atualiza `global_position` para posição do toque enquanto pressionado
-  - [ ] MT-3.2.2: Criar 3 `Area2D` para manchas de poeira, cada uma com script `dust_spot.gd`: var `_clean_progress: float = 0.0`. Detecta overlap com vassoura via `_on_area_entered`/`_on_area_exited`. Enquanto overlap, incrementa progress em `_process`. Quando `>= 1.0`, fade out com Tween e emite sinal `cleaned`
-  - [ ] MT-3.2.3: Criar `minigame_sweep.gd` que conta 3 sinais `cleaned` e emite `completed("sweep")`
+  - [X] MT-4.2.1: Após a protagonista alcançar a zona da pia, habilitar a interação de louça usando `res://assets/sprites/Room2Items.png`: prato, overlay de sujeira e esponja. A limpeza deve remover a sujeira do prato sem criar cena ou script exclusivo em `/scripts/rooms/room_2/`
+  - [X] MT-4.2.2: Ao concluir a interação, atualizar o estado visual de "louça suja" para "louça" em `Room2Objects.png`, marcar `_tasks_done["dishes"] = true` e impedir repetição
 - **Criterios de Aceitacao:**
-  1. Vassoura segue dedo suavemente
-  2. Poeira some gradualmente ao manter vassoura sobre ela
-  3. Completa quando 3 manchas limpas
-- **Classificacao:** Confirmado
+  1. A louça só pode ser limpa depois da aproximação da protagonista
+  2. A interação usa apenas os assets já prontos da Room 2
+  3. Ao concluir, o estado visual da pia muda de sujo para limpo
+- **Classificacao:** Confirmado (correção de escopo)
 
-#### Tarefa 3.3: Minigame Louça
-- **Descricao:** Clicar rapidamente em louças para lavá-las. Usa Hotspot com one_shot=false
-- **Diretorio:** /scripts/rooms/room_2/
+#### Tarefa 4.3: Interação Roupa
+- **Descricao:** Organização rápida de roupas integrada à cena, reaproveitando `Draggable` e `DropZone` em vez de um minigame dedicado
+- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-3.3.1: Criar 5-6 Hotspots representando louças sujas, com `one_shot = false`. Script `dish.gd` extends o Hotspot ou é nó irmão: var `_clicks_needed: int = 3`, var `_clicks: int = 0`. A cada `pressed`, incrementa. Quando `_clicks >= _clicks_needed`, troca sprite para "limpo" e desativa
-  - [ ] MT-3.3.2: Criar `minigame_dishes.gd` que conta louças limpas e emite `completed("dishes")` quando todas prontas
-  - [ ] MT-3.3.3: Adicionar feedback: cada clique faz splash de água (partícula simples ou sprite animado rápido)
+  - [X] MT-4.3.1: Após a protagonista alcançar a zona de roupa, instanciar/ativar 3 roupas a partir de `res://assets/sprites/Room2Items.png` como `Draggable` e 1 cesto como `DropZone`, sem criar script exclusivo de minigame
+  - [ ] MT-4.3.2: Conectar os drops bem-sucedidos no `room_2_controller.gd`; quando 3/3 roupas entrarem no cesto, atualizar o estado visual de "roupa suja" para "roupa" em `Room2Objects.png`, marcar `_tasks_done["clothes"] = true` e impedir repetição
 - **Criterios de Aceitacao:**
-  1. Cada louça requer ~3 cliques
-  2. Feedback visual por clique
-  3. Total ~10-15 segundos de gameplay
-- **Classificacao:** Confirmado
+  1. A roupa só pode ser organizada depois da aproximação da protagonista
+  2. As roupas usam `Draggable`/`DropZone` existentes
+  3. Ao concluir, o estado visual muda de roupa suja para roupa organizada
+  4. Soltar fora do cesto continua respeitando o snap back do componente reutilizável
+- **Classificacao:** Confirmado (correção de escopo)
 
-#### Tarefa 3.4: Minigame Roupa
-- **Descricao:** Arrastar 3 roupas para o cesto. Usa Draggable + DropZone
-- **Diretorio:** /scripts/rooms/room_2/
+#### Tarefa 4.4: Interação Vassoura
+- **Descricao:** Limpeza contínua dos 4 cantos sujos usando a máscara pronta da Room 2, sem construir um terceiro minigame dedicado
+- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-3.4.1: Adicionar 3 `Draggable` como roupas espalhadas e 1 `DropZone` como cesto. Configurar `snap_back = true`
-  - [ ] MT-3.4.2: Criar `minigame_clothes.gd` que escuta `dropped_on_target` dos 3 Draggables. Ao drop bem-sucedido, esconde roupa com animação. Quando 3 roupas no cesto, emite `completed("clothes")`
+  - [X] MT-4.4.1: Após a protagonista alcançar a zona de varrer, ativar a vassoura de `res://assets/sprites/Room2Items.png` e usar `res://assets/sprites/Room2Masc.png` como sujeira dos 4 cantos, reduzindo a máscara conforme a limpeza
+  - [X] MT-4.4.2: Quando os 4 cantos estiverem limpos, ocultar a máscara de sujeira, atualizar a cadeira para a versão organizada em `Room2Objects.png`, marcar `_tasks_done["sweep"] = true` e impedir repetição
 - **Criterios de Aceitacao:**
-  1. Roupas arrastáveis com snap para cesto
-  2. Voltam se soltas fora
-  3. Completa quando 3/3 no cesto
-- **Classificacao:** Confirmado
+  1. A vassoura só é ativada depois da aproximação da protagonista
+  2. A sujeira dos 4 cantos é removida usando `Room2Masc.png`
+  3. Ao concluir, a cadeira muda para o estado organizado
+- **Classificacao:** Confirmado (correção de escopo)
 
-#### Tarefa 3.5: Transformação da Sala 2
-- **Descricao:** Casa vira campo com cavalo e príncipe via EventChain
-- **Diretorio:** /scripts/rooms/
+#### Tarefa 4.5: Transformação Final da Sala 2
+- **Descricao:** Depois das 3 tarefas concluídas, tocar a animação pronta de transformação e entrar no loop final antes de retornar ao hub
+- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-3.5.1: Implementar `_start_transformation()` no controller usando EventChain: (1) som de vidro quebrando, (2) trocar sprite da janela para "quebrada", (3) spawnar cavalo entrando pela janela (Tween posição de fora para dentro), (4) fade out de todos elementos da casa, (5) fade in de background de campo/grama, (6) spawnar silhueta de príncipe (scale 0→1), (7) delay 2s emocional, (8) `GameManager.complete_room(2)`
-  - [ ] MT-3.5.2: Preparar sprites/placeholders: janela_inteira, janela_quebrada, cavalo, campo, príncipe_silhueta
+  - [X] MT-4.5.1: Preparar na cena a animação única de transformação com `res://assets/sprites/Room2Transition1024x1536_7C3L.png` em `AnimatedSprite2D` ou estrutura equivalente, configurada como spritesheet 7 colunas x 3 linhas e executada uma única vez quando `_start_transformation()` for chamado
+  - [ ] MT-4.5.2: Ao terminar a transição, trocar para o loop `res://assets/sprites/Room2Loop1024x1536_11C2L_S01.png` (11 colunas x 2 linhas), manter o estado final organizado visível por um breve beat emocional e então chamar `GameManager.complete_room(2)`
 - **Criterios de Aceitacao:**
-  1. Sequência fluida sem glitches
-  2. Timing permite absorver emocionalmente
-  3. Transição para Sala 3 funciona
-- **Classificacao:** Confirmado
+  1. A transição usa os assets finais já produzidos para a Room 2
+  2. O loop final entra automaticamente após a animação única
+  3. Ao final, retorno ao hub desbloqueando a Sala 3
+- **Classificacao:** Confirmado (correção de escopo)
 
-**Checkpoint FASE 3:** Sala 2 jogável, 3 minigames funcionais em qualquer ordem, transformação executa completamente.
+**Checkpoint FASE 4:** Sala 2 jogável com 3 tarefas rápidas integradas à mesma cena, todas iniciadas por aproximação da protagonista, usando os assets finais da Room 2, e a transição animada executa completamente antes de liberar a próxima porta no hub.
 
 ---
 
-### FASE 4: Salas 3 e 4
-**Objetivo:** Implementar as duas salas restantes, incluindo a mecânica nova (bullet hell) e a cena final do jogo
-**Subsistemas cobertos:** BulletHell, BabyInteraction (Hotspot reutilizado), Puzzle (Draggable reutilizado), Finale
+### FASE 5: Sala 3 — SOBREVIVA + Sala Final
+**Objetivo:** Implementar a sala de tensão, retornar ao hub, e concluir com a última sala e a cena final, sempre usando a protagonista como agente das ações
+**Subsistemas cobertos:** Protagonista + BulletHell + BabyInteraction (Hotspot reutilizado) + Puzzle + Finale
 
-#### Tarefa 4.1: Sala 3 Parte 1 — Bullet Hell
-- **Descricao:** Mecânica de desvio de projéteis médicos por tempo limitado. Única mecânica nova do jogo
+#### Tarefa 5.1: Sala 3 Parte 1 — Bullet Hell
+- **Descricao:** Mecânica de desvio de projéteis médicos por tempo limitado. A protagonista é quem sofre as colisões e sobrevive ao bullet hell
 - **Diretorio:** /scripts/rooms/room_3/ e /scenes/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-4.1.1: Criar `room_3.tscn` com fundo hospitalar escuro. Criar nó player (`Area2D` com sprite pequeno). Criar `Timer` de sobrevivência (15s, export var para ajuste)
-  - [ ] MT-4.1.2: Criar `player_dodge.gd`: segue touch/mouse (como sweep_brush da sala 2 — mesma lógica de seguir dedo). Clampar posição dentro dos limites da tela. Sinal `hit` ao detectar overlap com grupo "projectile"
-  - [ ] MT-4.1.3: Criar `projectile.tscn`: `Area2D` no grupo "projectile" com sprite (seringa/placeholder), script `projectile.gd` com export `speed: float` e `direction: Vector2`. Move em `_process`. Se sair da tela (`VisibleOnScreenNotifier2D`), `queue_free()`
-  - [ ] MT-4.1.4: Criar `bullet_spawner.gd`: Timer de spawn (0.4s-0.8s). Instancia `projectile.tscn` em posições aleatórias nas bordas com direção para dentro. Export `spawn_rate_range: Vector2` para variação
-  - [ ] MT-4.1.5: No controller `room_3_controller.gd`: ao player ser `hit`, flash vermelho (Tween modulate) + breve invencibilidade (0.5s). NÃO é game over. Quando timer de sobrevivência acaba, spawner para, projéteis restantes fazem fade out, chama `_transition_to_nursery()`
+  - [ ] MT-5.1.1: Criar `room_3.tscn` com fundo hospitalar escuro. Instanciar a protagonista como avatar controlado da fase e criar `Timer` de sobrevivência (15s, export var para ajuste)
+  - [ ] MT-5.1.2: Criar `player_dodge.gd` como script especializado da protagonista no bullet hell: segue touch/mouse, clampa posição dentro das margens da fase e emite sinal `hit` ao detectar overlap com grupo "projectile"
+  - [ ] MT-5.1.3: Criar `projectile.tscn`: `Area2D` no grupo "projectile" com sprite (seringa/placeholder), script `projectile.gd` com export `speed: float` e `direction: Vector2`. Move em `_process`. Se sair da tela (`VisibleOnScreenNotifier2D`), `queue_free()`
+  - [ ] MT-5.1.4: Criar `bullet_spawner.gd`: Timer de spawn (0.4s-0.8s). Instancia `projectile.tscn` em posições aleatórias nas bordas com direção para dentro. Export `spawn_rate_range: Vector2` para variação
+  - [ ] MT-5.1.5: No controller `room_3_controller.gd`: ao script da protagonista emitir `hit`, flash vermelho (Tween modulate) + breve invencibilidade (0.5s). NÃO é game over. Quando timer de sobrevivência acaba, spawner para, projéteis restantes fazem fade out e chama `_transition_to_nursery()`
 - **Criterios de Aceitacao:**
   1. Player segue dedo responsivamente
   2. Projéteis vêm de bordas variadas
@@ -297,42 +392,44 @@ Cada fase tem checkpoint que impede avançar sem validação.
   5. Sem memory leak de projéteis
 - **Classificacao:** Confirmado
 
-#### Tarefa 4.2: Sala 3 Parte 2 — Quarto do Ravi
-- **Descricao:** Transição emocional para interação suave com bebê. Reutiliza Hotspot
+#### Tarefa 5.2: Sala 3 Parte 2 — Quarto do Ravi
+- **Descricao:** Transição emocional para interação suave com o bebê. A interação só começa quando a protagonista alcança o Ravi
 - **Diretorio:** /scripts/rooms/room_3/
 - **Micro-Tasks:**
-  - [ ] MT-4.2.1: Implementar `_transition_to_nursery()` usando EventChain: (1) fade out elementos hospitalares, (2) trocar fundo para quarto do bebê, (3) mudar tom musical (AudioManager — mesma track mas volume ajustado ou track alternativa mais calma), (4) revelar sprite do Ravi no centro
-  - [ ] MT-4.2.2: Criar `baby_interaction.gd`: Hotspot no Ravi com `one_shot = false`. Cada `pressed`: spawnar `Sprite2D` de coração na posição do toque com Tween (sobe + fade out em 1s, depois `queue_free`), tocar SFX fofo (varia entre 2-3 sons aleatórios). Var `_touch_count: int`. Após 5+ toques, mostrar botão/indicador sutil de "→" (próxima)
-  - [ ] MT-4.2.3: Botão de próximo chama `GameManager.complete_room(3)`. Garantir que não aparece antes de 5 toques para que jogador interaja minimamente
+  - [ ] MT-5.2.1: Implementar `_transition_to_nursery()` usando EventChain: (1) fade out elementos hospitalares, (2) trocar fundo para quarto do bebê, (3) mudar tom musical (AudioManager — mesma track mas volume ajustado ou track alternativa mais calma), (4) revelar sprite do Ravi no centro
+  - [ ] MT-5.2.2: Criar `baby_interaction.gd`: clique/toque no Ravi primeiro move a protagonista até o bebê. Só quando ela chega a interação fica ativa. Cada `pressed` válido gera `Sprite2D` de coração na posição do toque com Tween (sobe + fade out em 1s, depois `queue_free`), toca SFX fofo (varia entre 2-3 sons aleatórios) e incrementa `_touch_count: int`. Após 5+ toques, mostrar botão/indicador sutil de "→" (próxima)
+  - [ ] MT-5.2.3: Botão de próximo chama `GameManager.complete_room(3)`. Garantir que não aparece antes de 5 toques para que jogador interaja minimamente
 - **Criterios de Aceitacao:**
   1. Contraste emocional brutal: tensão → paz
   2. Corações sobem e somem suavemente
   3. Sons fofos não repetitivos (rodar entre variações)
   4. Saída disponível após interação mínima mas sem pressa
+  5. Ao concluir, retorno ao hub desbloqueando a porta de cima
 - **Classificacao:** Confirmado (mecânica de saída: Assuncao — botão após 5 toques)
 
-#### Tarefa 4.3: Sala 4 — Puzzle do Coração
-- **Descricao:** Montar coração partido arrastando peças. Reutiliza Draggable + DropZone
+#### Tarefa 5.3: Sala Final — Puzzle do Coração
+- **Descricao:** Última sala do hub. A protagonista coleta as peças espalhadas, leva o coração ao centro e só então o minigame de montagem é aberto
 - **Diretorio:** /scripts/rooms/room_4/ e /scenes/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-4.3.1: Criar `room_4.tscn` com fundo escuro. Sprite do garoto chorando no centro-baixo. Moldura/mesa central onde coração será montado. 5-7 `Draggable` como peças do coração espalhadas pelo cenário
-  - [ ] MT-4.3.2: Criar `DropZone` para cada peça na moldura central, posicionadas para formar o coração quando todas encaixadas. Cada DropZone aceita apenas o Draggable com `drag_id` correspondente (adicionar validação em `drop_zone.gd`: export `accepted_id: String`, verificar antes de aceitar)
-  - [ ] MT-4.3.3: Criar `room_4_controller.gd`: escuta `dropped_on_target` de todas peças. Tracker `_pieces_placed: int`. A cada peça: (garoto chora menos — trocar sprite ou reduzir partículas de lágrima). Quando todas colocadas, `_trigger_finale()`
-  - [ ] MT-4.3.4: Atualizar `drop_zone.gd` para suportar `accepted_id` (validação de qual Draggable aceita). Se `accepted_id != ""` e `drag_id` não corresponde, rejeitar o drop (snap back)
+  - [ ] MT-5.3.1: Criar `room_4.tscn` com fundo escuro, protagonista, sprite do garoto chorando no centro-baixo e a área central onde o coração será montado. Posicionar 5-7 peças do coração espalhadas pelo cenário como alvos de coleta
+  - [ ] MT-5.3.2: Implementar a etapa de coleta: ao clicar numa peça, a protagonista vai até ela, coleta a peça e atualiza o progresso. Depois que todas forem coletadas, clicar/acionar a área central faz a protagonista levar o coração ao centro
+  - [ ] MT-5.3.3: Criar `room_4_controller.gd`: rastrear `_pieces_collected: int`, reagir à coleta de peças e, quando todas tiverem sido recolhidas, abrir o minigame de montagem apenas quando a protagonista alcançar a área central. Durante o progresso, o garoto chora menos (sprite muda ou lágrimas reduzem)
+  - [ ] MT-5.3.4: Dentro do minigame de montagem, usar `DropZone` com `accepted_id` para que cada peça encaixe apenas no slot correto. Se `accepted_id != ""` e `drag_id` não corresponde, rejeitar o drop (snap back)
 - **Criterios de Aceitacao:**
-  1. Peças encaixam apenas nos slots corretos
-  2. Snap satisfatório
-  3. Garoto reage progressivamente
-  4. Todas peças = finale
+  1. A protagonista precisa realmente se mover até as peças para coletá-las
+  2. O minigame de montagem só abre depois que a protagonista chega ao centro com o coração
+  3. Peças encaixam apenas nos slots corretos
+  4. Garoto reage progressivamente
+  5. Todas peças montadas = finale
 - **Classificacao:** Confirmado
 
-#### Tarefa 4.4: Cena Final do Jogo
+#### Tarefa 5.4: Final do Jogo
 - **Descricao:** Sequência emotiva que encerra o jogo. EventChain mais longa
 - **Diretorio:** /scripts/rooms/room_4/ e /scenes/ui/
 - **Micro-Tasks:**
-  - [ ] MT-4.4.1: Implementar `_trigger_finale()` no room_4_controller usando EventChain: (1) garoto para de chorar (sprite muda), (2) fade out cenário escuro, (3) `AudioManager.play_bgm("finale")` (crossfade para Goo Goo Dolls), (4) fade in cenário do passeio, (5) spawnar os dois personagens, (6) animação de "tirar foto" (Tween sutil), (7) flash branco (ColorRect alpha 0→1→0 rápido), (8) freeze 1.5s, (9) transição para tela final
-  - [ ] MT-4.4.2: Criar `final_screen.tscn`: CanvasLayer com background preto, `TextureRect` centralizada para a imagem/foto final (fade in lento, 2s). Música continua. Texto de dedicatória opcional (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo — tap anywhere após 5s faz fade to black e volta ao menu ou fecha
-  - [ ] MT-4.4.3: Implementar script `final_screen.gd`: lógica mínima — fade in da imagem, detectar tap para encerrar (com guard de 5s para não encerrar acidentalmente)
+  - [ ] MT-5.4.1: Implementar `_trigger_finale()` no room_4_controller usando EventChain: (1) garoto para de chorar (sprite muda), (2) fade out cenário escuro, (3) `AudioManager.play_bgm("finale")` (crossfade para Goo Goo Dolls), (4) fade in cenário do passeio, (5) spawnar os dois personagens, (6) animação de "tirar foto" (Tween sutil), (7) flash branco (ColorRect alpha 0→1→0 rápido), (8) freeze 1.5s, (9) transição para tela final
+  - [ ] MT-5.4.2: Criar `final_screen.tscn`: CanvasLayer com background preto, `TextureRect` centralizada para a imagem/foto final (fade in lento, 2s). Música continua. Texto de dedicatória opcional (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo — tap anywhere após 5s faz fade to black e volta ao início ou fecha
+  - [ ] MT-5.4.3: Implementar script `final_screen.gd`: lógica mínima — fade in da imagem, detectar tap para encerrar (com guard de 5s para não encerrar acidentalmente)
 - **Criterios de Aceitacao:**
   1. Crossfade musical sincronizado
   2. "Flash da foto" é satisfatório
@@ -341,39 +438,49 @@ Cada fase tem checkpoint que impede avançar sem validação.
   5. Jogo tem encerramento digno
 - **Classificacao:** Confirmado
 
-**Checkpoint FASE 4:** Todas 4 salas jogáveis. Jogo completo do início ao fim.
+**Checkpoint FASE 5:** Todas as salas periféricas jogáveis. A sequência hub → 1 → hub → 2 → hub → 3 → hub → final funciona, com a protagonista como agente de movimento, colisão, coleta e abertura das ações finais.
 
 ---
 
-### FASE 5: Fluxo Completo, Polimento e Android
-**Objetivo:** Integrar tudo, polir, exportar para Android
-**Subsistemas cobertos:** Menu, fluxo, UX, export
+### FASE 6: Fluxo Completo, Polimento e Android
+**Objetivo:** Integrar tudo, polir a leitura do hub e exportar para Android
+**Subsistemas cobertos:** Hub, fluxo, UX, export
 
-#### Tarefa 5.1: Menu Inicial
-NÃO TERA MENU
+#### Tarefa 6.1: Polimento da Sala Principal
+- **Descricao:** Refinar feedback visual e clareza de progressão da sala central
+- **Diretorio:** /scenes/ui/ e /scripts/rooms/
+- **Micro-Tasks:**
+  - [ ] MT-6.1.1: Ajustar intensidade, cor e direção das partículas de névoa nas portas bloqueadas
+  - [ ] MT-6.1.2: Garantir leitura clara dos três estados de porta: disponível, bloqueada, concluída/passada
+  - [ ] MT-6.1.3: Ajustar transições visuais entre retorno ao hub e abertura da próxima porta
+- **Criterios de Aceitacao:**
+  1. O jogador entende imediatamente qual é a próxima porta
+  2. Portas bloqueadas parecem inacessíveis
+  3. Portas concluídas não geram ambiguidade
+- **Classificacao:** Confirmado
 
-#### Tarefa 5.2: Playtest de Fluxo Completo
-- **Descricao:** sala central -> sala 1 → sala 2 → sala 3 → sala 4 → final sem bugs
+#### Tarefa 6.2: Playtest de Fluxo Completo
+- **Descricao:** sala principal -> Sala 1 -> sala principal -> Sala 2 -> sala principal -> Sala 3 -> sala principal -> Sala Final -> tela final sem bugs, validando sempre o gating por aproximação da protagonista
 - **Diretorio:** N/A (processo)
 - **Micro-Tasks:**
-  - [ ] MT-5.2.1: Testar fluxo completo no editor (mouse). Anotar bugs
-  - [ ] MT-5.2.2: Corrigir bugs encontrados
-  - [ ] MT-5.2.3: Ajustar timings de animações e delays baseado no feel
-  - [ ] MT-5.2.4: Verificar que nenhum estado morto existe (sempre há caminho para frente)
+  - [ ] MT-6.2.1: Testar fluxo completo no editor (mouse). Anotar bugs
+  - [ ] MT-6.2.2: Corrigir bugs encontrados
+  - [ ] MT-6.2.3: Ajustar timings de animações e delays baseado no feel
+  - [ ] MT-6.2.4: Verificar que nenhum estado morto existe (sempre há caminho para frente)
 - **Criterios de Aceitacao:**
   1. Zero crashes
   2. Zero dead-ends
   3. Fluxo emocional coerente
 - **Classificacao:** Confirmado
 
-#### Tarefa 5.3: Export Android
+#### Tarefa 6.3: Export Android
 - **Descricao:** Configurar e gerar APK funcional
 - **Diretorio:** /
 - **Micro-Tasks:**
-  - [ ] MT-5.3.1: Instalar export templates Android. Configurar keystore de debug. Criar preset de export com orientação portrait-only
-  - [ ] MT-5.3.2: Gerar APK de debug
-  - [ ] MT-5.3.3: Instalar em device real. Testar: touch responsivo em todos componentes (hotspot, drag, sweep, tap rápido), aspect ratio, áudio, performance
-  - [ ] MT-5.3.4: Ajustes finais baseados no teste em device (tamanhos de hitbox, velocidade de drag, etc)
+  - [ ] MT-6.3.1: Instalar export templates Android. Configurar keystore de debug. Criar preset de export com orientação portrait-only
+  - [ ] MT-6.3.2: Gerar APK de debug
+  - [ ] MT-6.3.3: Instalar em device real. Testar: touch responsivo em todos componentes e fluxos da protagonista (clique-to-move, hotspot, drag, sweep, tap rápido, portas do hub), aspect ratio, áudio, performance
+  - [ ] MT-6.3.4: Ajustes finais baseados no teste em device (tamanhos de hitbox, velocidade de drag, densidade da névoa, etc)
 - **Criterios de Aceitacao:**
   1. APK instala e roda
   2. Touch funciona em todas mecânicas
@@ -381,7 +488,7 @@ NÃO TERA MENU
   4. Áudio não corta
 - **Classificacao:** Confirmado
 
-**Checkpoint FASE 5:** Jogo completo e jogável em Android. Pronto para presentear.
+**Checkpoint FASE 6:** Jogo completo e jogável em Android. Pronto para presentear.
 
 ---
 
@@ -398,23 +505,20 @@ NÃO TERA MENU
 - CRIAR | `drop_zone.gd` | Zona alvo para drag-and-drop
 - CRIAR | `revealer.gd` | Transição escuro→cor
 - CRIAR | `event_chain.gd` | Sequenciador de eventos timed
+- CRIAR | `protagonist_actor.gd` | Movimento reutilizável da protagonista, margens por fase e gatilho de chegada
 
 ### /scripts/rooms/:
+- CRIAR | `main_menu_controller.gd` | Controller da sala principal / hub de progressão
 - CRIAR | `room_1_controller.gd` | Orquestrador Sala 1
 - CRIAR | `room_2_controller.gd` | Orquestrador Sala 2
 - CRIAR | `room_3_controller.gd` | Orquestrador Sala 3
-- CRIAR | `room_4_controller.gd` | Orquestrador Sala 4
+- CRIAR | `room_4_controller.gd` | Orquestrador da Sala Final
 
 ### /scripts/rooms/room_2/:
-- CRIAR | `sweep_brush.gd` | Vassoura que segue touch
-- CRIAR | `dust_spot.gd` | Mancha de poeira com progresso
-- CRIAR | `minigame_sweep.gd` | Controller do minigame varrer
-- CRIAR | `dish.gd` | Louça com clicks para lavar
-- CRIAR | `minigame_dishes.gd` | Controller do minigame louça
-- CRIAR | `minigame_clothes.gd` | Controller do minigame roupa
+- NAO_CRIAR | scripts dedicados da versão antiga (`sweep_brush.gd`, `dust_spot.gd`, `minigame_sweep.gd`, `dish.gd`, `minigame_dishes.gd`, `minigame_clothes.gd`) | Na Fase 4 simplificada, a lógica fica centralizada em `room_2_controller.gd` e reaproveita componentes já existentes
 
 ### /scripts/rooms/room_3/:
-- CRIAR | `player_dodge.gd` | Player do bullet hell
+- CRIAR | `player_dodge.gd` | Script especializado da protagonista no bullet hell
 - CRIAR | `projectile.gd` | Projétil médico
 - CRIAR | `bullet_spawner.gd` | Spawner de projéteis
 - CRIAR | `baby_interaction.gd` | Interação de carinho
@@ -423,19 +527,20 @@ NÃO TERA MENU
 - CRIAR | `final_screen.gd` | Lógica da tela final
 
 ### /scenes/rooms/:
-- CRIAR | `room_1.tscn` | Placeholder mínimo na Fase 0, expandido para Jardim das flores na Fase 2
+- CRIAR | `room_1.tscn` | Placeholder mínimo na Fase 0, expandido para Jardim das flores na Fase 3
 - CRIAR | `room_2.tscn` | Casa bagunçada
 - CRIAR | `room_3.tscn` | Hospital → quarto
-- CRIAR | `room_4.tscn` | Puzzle do coração
+- CRIAR | `room_4.tscn` | Sala Final / puzzle do coração
 
 ### /scenes/ui/:
-- CRIAR | `main_menu.tscn` | Tela de entrada
-- CRIAR | `test_game_manager_transition.tscn` | Cena mínima que chama GameManager.transition_to_room(1)
+- CRIAR | `main_menu.tscn` | Sala principal / hub de progressão
+- CRIAR | `test_game_manager_transition.tscn` | Cena de teste do fluxo de transição e retorno ao hub
 - CRIAR | `final_screen.tscn` | Tela final com foto
+- CRIAR | `test_protagonist.tscn` | Cena de teste do clique-to-move da protagonista e das margens
 
 ### /scenes/components/:
 - CRIAR | `projectile.tscn` | Cena do projétil (instanciável)
-
+- CRIAR | `protagonist.tscn` | Cena reutilizável da protagonista
 ### /assets/:
 - CRIAR | `sprites/` | Placeholder sprites para todas salas
 - CRIAR | `audio/` | Tracks musicais e SFX
@@ -446,43 +551,53 @@ NÃO TERA MENU
 
 | ID | Invariante | Origem | Violação detectável por |
 |----|------------|--------|-------------------------|
-| INV-1 | `GameManager.current_room` sempre reflete a sala visível | Fluxo de jogo | Assert em `transition_to_room` antes de trocar cena |
+| INV-1 | `GameManager.current_room` sempre reflete a sala visível; valor `0` representa a sala principal | Fluxo de jogo | Assert em `transition_to_room` e no retorno ao hub |
 | INV-2 | BGM nunca para abruptamente — sempre crossfade | UX emocional | AudioManager.play_bgm sempre usa Tween |
-| INV-3 | Todo estado de jogo tem caminho para avançar (zero dead-ends) | Game design | Cada controller tem path garantido para `complete_room` |
+| INV-3 | Todo estado de jogo tem caminho para avançar (zero dead-ends) | Game design | Cada controller tem path garantido para `complete_room`; no hub existe exatamente uma próxima porta válida |
 | INV-4 | Componentes reutilizáveis não conhecem salas — zero referências a room_* em scripts de /components/ | Arquitetura | Inspeção: nenhum import/ref a rooms em components |
 | INV-5 | Input funciona em touch E mouse para todo componente interativo | Plataforma Android + dev | Hotspot e Draggable tratam ambos InputEvent types |
 | INV-6 | Projéteis são sempre destruídos ao sair da tela | Performance | VisibleOnScreenNotifier2D + queue_free |
+| INV-7 | Portas bloqueadas da sala principal sempre exibem névoa; a porta liberada nunca exibe névoa | UX / progressão | `_refresh_doors_state()` no controller do hub |
+| INV-8 | Ações contextuais só disparam depois que a protagonista alcança o alvo associado | Fluxo diegético | Controllers aguardam sinal de chegada antes de trocar de sala, coletar, iniciar minigame ou abrir puzzle |
+| INV-9 | O movimento da protagonista é limitado por margens da fase, não por colisão de cenário | Navegação | Destino e/ou posição final sempre são clampados por `margin_top/bottom/left/right` |
 
 ## PRECONDICOES
 
 | Operação | Condição | Verificação | Se falsa |
 |----------|----------|-------------|----------|
-| `transition_to_room(id)` | `id` entre 1-4 E `state != TRANSITIONING` | Guard no início da função | Ignora chamada, loga warning |
+| `transition_to_room(id)` | `id` entre 1-4 E `state != TRANSITIONING` E (`can_enter_room(id)` quando origem for o hub) | Guard no início da função | Ignora chamada, loga warning |
 | `complete_room(id)` | `id == current_room` E room não já completa | Checar `rooms_completed` | Ignora chamada duplicada |
 | `play_bgm(track_key)` | `track_key` existe em `TRACKS` dict | `TRACKS.has(track_key)` | Loga warning, mantém track atual |
 | `Draggable._on_dropped()` | `_dragging == true` | Checado antes do processing | Não processa drop |
 | `EventChain.play()` | `_playing == false` | Guard no início | Ignora segunda chamada |
+| ação contextual de sala | protagonista já alcançou o alvo/marker da ação | controller espera sinal de chegada | ação fica pendente, mas não executa antes |
 
 ## POSCONDICOES
 
 | Operação | Garantia | Verificação |
 |----------|----------|-------------|
 | `transition_to_room(id)` | Cena nova visível, fade completo, state == PLAYING | Sinal `transition_finished` emitido |
-| `complete_room(id)` | Dict atualizado, próxima sala carregada ou final mostrado | `rooms_completed[id] == true` |
+| `complete_room(id)` | Dict atualizado, hub recarregado se `id < 4` ou final mostrado se `id == 4` | `rooms_completed[id] == true` |
 | `Revealer.reveal()` | Parent.modulate == revealed_color | Sinal `revealed` emitido |
 | `EventChain.play()` | Todos steps executados na ordem | Sinal `chain_completed` emitido |
 | Bullet hell timer expira | Spawner parado, projéteis removidos | Zero nós no grupo "projectile" |
+| comando de movimento da protagonista | destino respeita margens da fase e sinal de chegada é emitido ao final | controller recebe o callback/sinal antes de disparar ação contextual |
 
 ## CASOS_DE_BORDA
 
 | Caso | Comportamento Esperado |
 |------|------------------------|
 | Tap duplo rápido em Hotspot one_shot | Apenas primeira coleta registrada (active=false após primeiro) |
+| Tap em porta bloqueada no hub | Nada acontece além do feedback opcional; sem transição |
+| Tap em porta já concluída | Sala não reabre; estado permanece bloqueado |
 | Soltar Draggable fora de qualquer DropZone | Tween de volta para posição original |
-| Soltar Draggable em DropZone errada (Sala 4) | Rejeitado pelo `accepted_id`, snap back |
+| Soltar Draggable em DropZone errada (Sala Final) | Rejeitado pelo `accepted_id`, snap back |
 | Minimizar app durante EventChain | Godot pausa, retoma onde parou (SceneTree.paused) |
 | Touch com múltiplos dedos | Draggable trava no primeiro touch_index; ignora outros |
 | Clicar durante transição (fade) | GameManager em state TRANSITIONING bloqueia input de salas |
+| Retorno ao hub após concluir uma sala | Porta concluída fica inacessível e a próxima porta correta é liberada |
+| Clique em porta liberada no hub | A protagonista caminha primeiro; a troca de sala só acontece quando ela chega |
+| Clique em alvo contextual de sala | A protagonista caminha primeiro; coleta, revelação ou minigame só começa ao chegar |
 | Projétil spawna quando timer já expirou | Spawner.stop() chamado antes — nenhum novo projétil |
 | Chamar reveal() em Revealer já revelado | Idempotente — nada acontece |
 | Áudio placeholder inexistente | AudioManager loga warning, jogo continua sem som |
@@ -492,24 +607,26 @@ NÃO TERA MENU
 | Falha | Resposta |
 |-------|----------|
 | Cena de sala não encontrada no path | GameManager loga erro, não crasha (guard com `ResourceLoader.exists`) |
+| `main_menu.tscn` ausente ou inválida | `GameManager.return_to_hub()` loga erro e mantém a cena atual |
 | AudioStream null no dict de tracks | AudioManager ignora com warning |
 | Projétil stuck dentro da tela (bug de posição) | Auto-destroy por lifetime timer (5s max) como fallback |
 | Draggable perde referência do DropZone | snap_back garante retorno à origem |
 | EventChain com Callable inválido | try/catch (ou verificar `is_valid()`) antes de call, skip step com warning |
-| Touch não detectado em device | Hitboxes generosas (CollisionShape maior que sprite), testável em Tarefa 5.3 |
+| `rooms_completed` inconsistente | `get_next_room_to_unlock()` cai para a primeira sala não concluída válida |
+| Touch não detectado em device | Hitboxes generosas (CollisionShape maior que sprite), testável em Tarefa 6.3 |
 
 ## CHECKLIST_QUALIDADE
 
 | Eixo | Status | Nota |
 |------|--------|------|
 | Organização | Atendido | /core para managers, /components para reutilizáveis, /rooms para específicos. SRP por arquivo |
-| Design Principles | Atendido | KISS (mecânicas simples), DRY (4 componentes reutilizados em 4 salas), YAGNI (sem save, sem inventário) |
+| Design Principles | Atendido | KISS (mecânicas simples), DRY (4 componentes reutilizados nas salas), YAGNI (sem save, sem inventário) |
 | Modularity | Atendido | Componentes não conhecem salas (INV-4). Comunicação 100% por sinais |
 | Patterns | Atendido | Observer (sinais), Composition (nós Godot), Chain of Responsibility (EventChain) |
 | Coding | Atendido | Scripts curtos, nomes descritivos, exports para configuração |
 | Testability | Atendido | Cada componente tem cena de teste isolada (Fase 1). Managers testáveis independentemente |
 | Performance | Atendido | Pooling/destroy de projéteis, sem alocações em loop, Tweens ao invés de _process para animações |
-| UI Architecture | Atendido | View (cenas .tscn) separada de logic (scripts), controller por sala |
+| UI Architecture | Atendido | View (cenas .tscn) separada de logic (scripts), controller por sala e para o hub |
 
 ---
 
@@ -517,13 +634,14 @@ NÃO TERA MENU
 
 - [ ] Estrutura de projeto criada (Fase 0)
 - [ ] GameManager e AudioManager funcionais como Autoload (Fase 0)
-- [ ] 4 componentes reutilizáveis testados isoladamente (Fase 1)
-- [ ] Sala 1 jogável, validando composição de componentes (Fase 2)
-- [ ] Sala 2 com 3 minigames funcionais (Fase 3)
-- [ ] Sala 3 com bullet hell + carinho (Fase 4)
-- [ ] Sala 4 com puzzle + cena final emotiva (Fase 4)
-- [ ] Fluxo completo menu → 4 salas → final sem bugs (Fase 5)
-- [ ] APK funcional testado em device Android (Fase 5)
+- [ ] 4 componentes reutilizáveis + protagonista base testados isoladamente (Fase 1)
+- [ ] Sala principal / hub com portas bloqueadas por progressão e transição dependente da protagonista (Fase 2)
+- [ ] Sala 1 jogável, validando protagonista + reveal por modulate (Fase 3)
+- [ ] Sala 2 com 3 tarefas rápidas integradas à cena, iniciadas por aproximação da protagonista e concluídas com a transição animada final (Fase 4)
+- [ ] Sala 3 com bullet hell na protagonista + carinho (Fase 5)
+- [ ] Sala Final com coleta, puzzle e cena final emotiva (Fase 5)
+- [ ] Fluxo completo hub → salas → final sem bugs (Fase 6)
+- [ ] APK funcional testado em device Android (Fase 6)
 - [ ] INVARIANTES verificáveis no código
 - [ ] CASOS_DE_BORDA tratados
 - [ ] MODOS_DE_FALHA implementados
@@ -533,11 +651,16 @@ NÃO TERA MENU
 
 ## NOTAS_DE_CERTEZA
 
-### Confirmado (explícito no GDD):
-- 4 salas: COLETE, ORGANIZE, SOBREVIVA, REPARE
+### Confirmado (GDD + alinhamento atual):
+- Sala principal funciona como hub/menu do jogo
+- Ordem espacial das portas no hub: direita = COLETE, baixo = ORGANIZE, esquerda = SOBREVIVA, cima = FINAL
+- Progressão linear: só entra na próxima sala liberada, sem reentrada em salas concluídas
+- A protagonista está presente no hub e em todas as salas jogáveis; ações contextuais só disparam por aproximação
+- O workspace já possui spritesheets da protagonista em `assets/sprites/` com prefixo `Kay` para `idle`, `walking` e `interact`
+- Estado atual do workspace: `protagonist.tscn` existe, mas o hub ainda usa uma protagonista provisória hardcoded em `main_menu.tscn` + `main_menu_controller.gd`; a migração para a cena reutilizável ainda precisa ser concluída
 - Mecânicas: coleta, varrer/louça/roupa, bullet hell + carinho, puzzle
 - Elementos: flores (rosa/hibisco/lírio/girassol), furão, bolo, cavalo, príncipe, Ravi, coração partido, foto final
-- Músicas: End of Beginning 8 bit (principal), Goo Goo Dolls (Sala 4 final)
+- Músicas: End of Beginning 8 bit (principal/hub), Goo Goo Dolls (Sala Final)
 - Plataforma: Android, 9:16, GDScript, Godot 4
 
 ### Assuncao (inferido com base):
@@ -551,6 +674,6 @@ NÃO TERA MENU
 - Assets de pixel art: já existem ou serão criados? Impacta estimativa de tempo
 - Goo Goo Dolls: qual faixa especificamente? "Iris"?
 - Há textos/diálogos em algum momento ou é 100% visual?
-- O garoto da Sala 4 representa alguém específico?
+- O garoto da Sala Final representa alguém específico?
 - O furão tem nome?
 - Ravi: referência a nome real? Sprite de bebê genérico ou específico?

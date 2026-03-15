@@ -4,7 +4,7 @@
 
 [node name="TestGameManagerTransition" type="Node"]
 script = ExtResource("1_2uj1r")
-auto_start_transition = true
+auto_run_hub_loop_test = true
 target_room_id = 1
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
@@ -25,7 +25,7 @@ offset_top = 440.0
 offset_right = 500.0
 offset_bottom = 520.0
 theme_override_font_sizes/font_size = 28
-text = "Iniciando teste do GameManager..."
+text = "Iniciando teste hub -> sala -> hub..."
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -35,6 +35,6 @@ offset_top = 530.0
 offset_right = 480.0
 offset_bottom = 620.0
 theme_override_font_sizes/font_size = 18
-text = "A cena chama GameManager.transition_to_room(1) em _ready."
+text = "A cena carrega o hub, entra na Sala 1, conclui a sala e valida o retorno ao hub."
 horizontal_alignment = 1
 vertical_alignment = 1

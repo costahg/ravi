@@ -1,0 +1,175 @@
+[gd_scene load_steps=2 format=3 uid="uid://04leblt5sbul"]
+
+[ext_resource type="PackedScene" uid="uid://bto3gsqr453yv" path="res://scenes/components/protagonist.tscn" id="1_protagonist"]
+
+[node name="TestProtagonist" type="Node2D"]
+
+[node name="Protagonist" parent="." instance=ExtResource("1_protagonist")]
+position = Vector2(270, 540)
+move_speed = 420.0
+arrival_threshold = 8.0
+margin_top = 250.0
+margin_bottom = 120.0
+margin_left = 60.0
+margin_right = 60.0
+
+[node name="ClampTopLeftMarker" type="Polygon2D" parent="."]
+position = Vector2(60, 250)
+color = Color(0.952941, 0.670588, 0.243137, 1)
+polygon = PackedVector2Array(0, -12, 12, 0, 0, 12, -12, 0)
+
+[node name="ClampBottomRightMarker" type="Polygon2D" parent="."]
+position = Vector2(480, 840)
+color = Color(0.952941, 0.670588, 0.243137, 1)
+polygon = PackedVector2Array(0, -12, 12, 0, 0, 12, -12, 0)
+
+[node name="CenterMarker" type="Polygon2D" parent="."]
+position = Vector2(270, 540)
+color = Color(0.486275, 0.784314, 0.709804, 1)
+polygon = PackedVector2Array(0, -10, 10, 0, 0, 10, -10, 0)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Background" type="ColorRect" parent="CanvasLayer"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.0627451, 0.0823529, 0.121569, 1)
+
+[node name="PlayArea" type="ColorRect" parent="CanvasLayer"]
+offset_left = 60.0
+offset_top = 250.0
+offset_right = 480.0
+offset_bottom = 840.0
+mouse_filter = 2
+color = Color(0.176471, 0.235294, 0.301961, 0.45)
+
+[node name="BorderTop" type="ColorRect" parent="CanvasLayer"]
+offset_left = 60.0
+offset_top = 250.0
+offset_right = 480.0
+offset_bottom = 254.0
+mouse_filter = 2
+color = Color(0.952941, 0.670588, 0.243137, 1)
+
+[node name="BorderBottom" type="ColorRect" parent="CanvasLayer"]
+offset_left = 60.0
+offset_top = 836.0
+offset_right = 480.0
+offset_bottom = 840.0
+mouse_filter = 2
+color = Color(0.952941, 0.670588, 0.243137, 1)
+
+[node name="BorderLeft" type="ColorRect" parent="CanvasLayer"]
+offset_left = 60.0
+offset_top = 250.0
+offset_right = 64.0
+offset_bottom = 840.0
+mouse_filter = 2
+color = Color(0.952941, 0.670588, 0.243137, 1)
+
+[node name="BorderRight" type="ColorRect" parent="CanvasLayer"]
+offset_left = 476.0
+offset_top = 250.0
+offset_right = 480.0
+offset_bottom = 840.0
+mouse_filter = 2
+color = Color(0.952941, 0.670588, 0.243137, 1)
+
+[node name="TitleLabel" type="Label" parent="CanvasLayer"]
+offset_left = 32.0
+offset_top = 28.0
+offset_right = 508.0
+offset_bottom = 72.0
+theme_override_font_sizes/font_size = 28
+text = "Teste da Protagonista"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="CanvasLayer"]
+offset_left = 32.0
+offset_top = 78.0
+offset_right = 508.0
+offset_bottom = 124.0
+theme_override_font_sizes/font_size = 18
+text = "Clique ou toque no palco para mover. Use os botoes para forcar clamps fora da area valida."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ClampTopLeftButton" type="Button" parent="CanvasLayer"]
+offset_left = 32.0
+offset_top = 146.0
+offset_right = 250.0
+offset_bottom = 206.0
+theme_override_font_sizes/font_size = 20
+text = "Clamp sup/esq"
+
+[node name="ClampBottomRightButton" type="Button" parent="CanvasLayer"]
+offset_left = 290.0
+offset_top = 146.0
+offset_right = 508.0
+offset_bottom = 206.0
+theme_override_font_sizes/font_size = 20
+text = "Clamp inf/dir"
+
+[node name="CenterButton" type="Button" parent="CanvasLayer"]
+offset_left = 161.0
+offset_top = 214.0
+offset_right = 379.0
+offset_bottom = 246.0
+theme_override_font_sizes/font_size = 18
+text = "Voltar ao centro"
+
+[node name="InstructionIdle" type="Label" parent="CanvasLayer"]
+offset_left = 70.0
+offset_top = 858.0
+offset_right = 470.0
+offset_bottom = 890.0
+theme_override_font_sizes/font_size = 18
+text = "Esperado: parada = idle"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="InstructionWalking" type="Label" parent="CanvasLayer"]
+offset_left = 70.0
+offset_top = 890.0
+offset_right = 470.0
+offset_bottom = 922.0
+theme_override_font_sizes/font_size = 18
+text = "Esperado: deslocamento = walking"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="InstructionInteract" type="Label" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 922.0
+offset_right = 500.0
+offset_bottom = 954.0
+theme_override_font_sizes/font_size = 17
+text = "Regra: interact nao deve tocar automaticamente em nenhum desses movimentos"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TopLeftCaption" type="Label" parent="CanvasLayer"]
+offset_left = 72.0
+offset_top = 252.0
+offset_right = 212.0
+offset_bottom = 284.0
+theme_override_font_sizes/font_size = 16
+text = "Clamp esperado"
+
+[node name="BottomRightCaption" type="Label" parent="CanvasLayer"]
+offset_left = 318.0
+offset_top = 808.0
+offset_right = 466.0
+offset_bottom = 840.0
+theme_override_font_sizes/font_size = 16
+text = "Clamp esperado"
+horizontal_alignment = 2
+
+[connection signal="pressed" from="CanvasLayer/ClampTopLeftButton" to="Protagonist" method="move_to_global_position" binds= [Vector2(-400, -400)]]
+[connection signal="pressed" from="CanvasLayer/ClampBottomRightButton" to="Protagonist" method="move_to_global_position" binds= [Vector2(2000, 2000)]]
+[connection signal="pressed" from="CanvasLayer/CenterButton" to="Protagonist" method="move_to_global_position" binds= [Vector2(270, 540)]]
