@@ -79,16 +79,13 @@ func _on_dropped() -> void:
 		return
 
 	var target_area: Area2D = _find_drop_target()
-	if target_area != null:
+	if target_area != null and _can_drop_on_target(target_area):
 		global_position = target_area.global_position
+		_origin_position = global_position
 		dropped_on_target.emit(drag_id, target_area)
 		return
 
-	if snap_back:
-		var tween: Tween = create_tween()
-		tween.set_trans(Tween.TRANS_SINE)
-		tween.set_ease(Tween.EASE_OUT)
-		tween.tween_property(self, "global_position", _origin_position, SNAP_BACK_DURATION)
+	_snap_back_to_origin()
 
 
 func _begin_mouse_drag() -> void:
@@ -134,6 +131,31 @@ func _find_drop_target() -> Area2D:
 			closest_distance = distance_to_target
 
 	return closest_target
+
+
+func _can_drop_on_target(target_area: Area2D) -> bool:
+	if target_area == null:
+		return false
+
+	if target_area.has_method("accepts_drag_id"):
+		return bool(target_area.call("accepts_drag_id", drag_id))
+
+	if "accepted_id" in target_area:
+		var accepted_id: Variant = target_area.get("accepted_id")
+		if accepted_id is String and String(accepted_id) != "":
+			return String(accepted_id) == drag_id
+
+	return true
+
+
+func _snap_back_to_origin() -> void:
+	if not snap_back:
+		return
+
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "global_position", _origin_position, SNAP_BACK_DURATION)
 
 
 func _screen_to_global_position(screen_position: Vector2) -> Vector2:
