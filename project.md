@@ -397,8 +397,8 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Diretorio:** /scripts/rooms/room_3/
 - **Micro-Tasks:**
   - [X] MT-5.2.1: Implementar `_transition_to_nursery()` usando EventChain: (1) fade out elementos hospitalares, (2) trocar fundo para quarto do bebê, (3) mudar tom musical (AudioManager — mesma track mas volume ajustado ou track alternativa mais calma), (4) revelar sprite do Ravi no centro
-  - [ ] MT-5.2.2: Criar `baby_interaction.gd`: clique/toque no Ravi primeiro move a protagonista até o bebê. Só quando ela chega a interação fica ativa. Cada `pressed` válido gera `Sprite2D` de coração na posição do toque com Tween (sobe + fade out em 1s, depois `queue_free`), toca SFX fofo (varia entre 2-3 sons aleatórios) e incrementa `_touch_count: int`. Após 5+ toques, mostrar botão/indicador sutil de "→" (próxima)
-  - [ ] MT-5.2.3: Botão de próximo chama `GameManager.complete_room(3)`. Garantir que não aparece antes de 5 toques para que jogador interaja minimamente
+  - [X] MT-5.2.2: Criar `baby_interaction.gd`: clique/toque no Ravi primeiro move a protagonista até o bebê. Só quando ela chega a interação fica ativa. Cada `pressed` válido gera `Sprite2D` de coração na posição do toque com Tween (sobe + fade out em 1s, depois `queue_free`), toca SFX fofo (varia entre 2-3 sons aleatórios) e incrementa `_touch_count: int`. Após 5+ toques, mostrar botão/indicador sutil de "→" (próxima)
+  - [X] MT-5.2.3: Botão de próximo chama `GameManager.complete_room(3)`. Garantir que não aparece antes de 5 toques para que jogador interaja minimamente
 - **Criterios de Aceitacao:**
   1. Contraste emocional brutal: tensão → paz
   2. Corações sobem e somem suavemente
@@ -411,10 +411,10 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Última sala do hub. A protagonista coleta as peças espalhadas, leva o coração ao centro e só então o minigame de montagem é aberto
 - **Diretorio:** /scripts/rooms/room_4/ e /scenes/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-5.3.1: Criar `room_4.tscn` com fundo escuro, protagonista, sprite do garoto chorando no centro-baixo e a área central onde o coração será montado. Posicionar 5-7 peças do coração espalhadas pelo cenário como alvos de coleta
-  - [ ] MT-5.3.2: Implementar a etapa de coleta: ao clicar numa peça, a protagonista vai até ela, coleta a peça e atualiza o progresso. Depois que todas forem coletadas, clicar/acionar a área central faz a protagonista levar o coração ao centro
-  - [ ] MT-5.3.3: Criar `room_4_controller.gd`: rastrear `_pieces_collected: int`, reagir à coleta de peças e, quando todas tiverem sido recolhidas, abrir o minigame de montagem apenas quando a protagonista alcançar a área central. Durante o progresso, o garoto chora menos (sprite muda ou lágrimas reduzem)
-  - [ ] MT-5.3.4: Dentro do minigame de montagem, usar `DropZone` com `accepted_id` para que cada peça encaixe apenas no slot correto. Se `accepted_id != ""` e `drag_id` não corresponde, rejeitar o drop (snap back)
+  - [ ] MT-5.3.1: Criar `room_4.tscn` com fundo escuro, protagonista, sprite do garoto chorando no centro-baixo e a área central onde o coração será montado. Posicionar 5-7 peças do coração proceduralmente espalhadas pelo cenário como alvos de coleta
+  - [ ] MT-5.3.2: Implementar a etapa de coleta: ao clicar numa peça, a protagonista vai até ela, coleta a peça e atualiza o progresso. Depois que todas forem coletadas, clicar/acionar a área central faz a protagonista levar o coração procedural ao centro 
+  - [ ] MT-5.3.3: Criar `room_4_controller.gd`: rastrear `_pieces_collected: int`, reagir à coleta de peças e, quando todas tiverem sido recolhidas, abrir o minigame de montagem apenas quando a protagonista alcançar a área central, o minigame tem o coração preto no fundo mostrando o molde, e as peças procedural pra arrastar e preencher. 
+  - [ ] MT-5.3.4: Dentro do minigame de montagem, usar `DropZone` com `accepted_id` para que cada peça encaixe apenas no slot correto (procedural). Se `accepted_id != ""` e `drag_id` não corresponde, rejeitar o drop (snap back), se for difícil implementar, pode ser apenas esferas brilhantes que arrastando vai enchendo sem tanta rigidez.
 - **Criterios de Aceitacao:**
   1. A protagonista precisa realmente se mover até as peças para coletá-las
   2. O minigame de montagem só abre depois que a protagonista chega ao centro com o coração

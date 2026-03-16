@@ -46,6 +46,7 @@ var _survival_phase_finished: bool = false
 var _nursery_transition_started: bool = false
 var _nursery_background: AnimatedSprite2D
 var _ravi_base_scale: Vector2 = Vector2.ONE
+var _hub_return_requested: bool = false
 
 
 func _ready() -> void:
@@ -53,6 +54,7 @@ func _ready() -> void:
 	_configure_hospital_background()
 	_configure_survival_timer()
 	_connect_survival_phase()
+	_connect_baby_interaction_signals()
 	_configure_doctor_timer_label()
 	_prepare_nursery_nodes()
 	_start_bullet_spawner()
@@ -109,6 +111,54 @@ func _connect_survival_phase() -> void:
 	var on_timeout: Callable = Callable(self, "_on_survival_timer_timeout")
 	if not _survival_timer.is_connected("timeout", on_timeout):
 		_survival_timer.connect("timeout", on_timeout)
+
+
+func _connect_baby_interaction_signals() -> void:
+	if _baby_interaction == null or not _baby_interaction.has_signal("exit_requested"):
+		return
+
+	var on_exit_requested: Callable = Callable(self, "_on_baby_exit_requested")
+	if not _baby_interaction.is_connected("exit_requested", on_exit_requested):
+		_baby_interaction.connect("exit_requested", on_exit_requested)
+
+
+func _on_baby_exit_requested() -> void:
+	_request_return_to_hub()
+
+
+func _request_return_to_hub() -> void:
+	if _hub_return_requested:
+		return
+
+	_hub_return_requested = true
+
+	if Engine.has_singleton("GameManager"):
+		if GameManager.current_room == 3 and not GameManager.rooms_completed.get(3, false):
+			GameManager.complete_room(3)
+			return
+
+		push_warning(
+			"Room3Controller nao conseguiu concluir a sala 3 via GameManager.complete_room(3). "
+			+ "Aplicando fallback para GameManager.return_to_hub()."
+		)
+		GameManager.return_to_hub()
+		return
+
+	var game_manager: Node = get_node_or_null("/root/GameManager")
+	if game_manager == null:
+		push_warning("Room3Controller nao encontrou GameManager para retornar ao hub.")
+		return
+
+	if game_manager.get("current_room") == 3 and not game_manager.get("rooms_completed").get(3, false):
+		game_manager.call("complete_room", 3)
+		return
+
+	push_warning(
+		"Room3Controller nao conseguiu concluir a sala 3 via GameManager.complete_room(3). "
+		+ "Aplicando fallback para GameManager.return_to_hub()."
+	)
+	if game_manager.has_method("return_to_hub"):
+		game_manager.call("return_to_hub")
 
 
 func _start_bullet_spawner() -> void:

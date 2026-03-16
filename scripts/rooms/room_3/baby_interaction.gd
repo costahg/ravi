@@ -2,12 +2,14 @@ extends Area2D
 
 signal touch_count_changed(touch_count: int)
 signal minimum_touches_reached(touch_count: int)
+signal exit_requested
 
 const HEART_PATTERN: PackedStringArray = ["01100110", "11111111", "11111111", "11111111", "01111110", "00111100", "00011000", "00000000"]
 const HEART_COLOR: Color = Color(1.0, 0.45, 0.7, 1.0)
 const DEFAULT_HITBOX_SIZE: Vector2 = Vector2(220.0, 220.0)
-const NEXT_INDICATOR_OFFSET: Vector2 = Vector2(-48.0, -188.0)
-const NEXT_INDICATOR_TEXTURE_PATH: String = "res://assets/sprites/key.png"
+const EXIT_KEY_OFFSET: Vector2 = Vector2(0.0, -150.0)
+const EXIT_KEY_TEXTURE_PATH: String = "res://assets/sprites/key.png"
+const EXIT_KEY_HITBOX_SIZE: Vector2 = Vector2(96.0, 96.0)
 
 @export var hitbox_size: Vector2 = DEFAULT_HITBOX_SIZE
 @export var required_touches: int = 5
@@ -15,6 +17,9 @@ const NEXT_INDICATOR_TEXTURE_PATH: String = "res://assets/sprites/key.png"
 @export var heart_float_distance: float = 64.0
 @export var heart_lifetime: float = 1.0
 @export var touch_sfx_variants: Array[AudioStream] = []
+
+@export_group("Exit Key Debug")
+@export var show_exit_key_hitbox_debug: bool = false
 
 @export_group("Roaming")
 @export var roam_enabled: bool = true
@@ -36,9 +41,10 @@ var _roaming_loop_running: bool = false
 var _roaming_bounds: Rect2 = Rect2(Vector2.ZERO, Vector2(540.0, 960.0))
 var _roam_tween: Tween
 var _baby_visual_base_scale: Vector2 = Vector2.ONE
+var _exit_requested_sent: bool = false
 
 @onready var _collision_shape: CollisionShape2D = _ensure_collision_shape()
-@onready var _next_indicator: TextureRect = _ensure_next_indicator()
+@onready var _exit_key_root: Node2D = _ensure_exit_key_root()
 @onready var _baby_visual: AnimatedSprite2D = _resolve_baby_visual()
 
 
@@ -52,6 +58,8 @@ func _ready() -> void:
 	monitoring = false
 	monitorable = false
 	_heart_texture = _build_heart_texture()
+	_hide_exit_key()
+	_update_exit_key_debug_visual()
 
 	if _baby_visual != null:
 		_baby_visual_base_scale = _baby_visual.scale
@@ -106,8 +114,8 @@ func get_touch_count() -> int:
 	return _touch_count
 
 
-func get_next_indicator() -> TextureRect:
-	return _next_indicator
+func get_next_indicator() -> Node2D:
+	return _exit_key_root
 
 
 func _input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
@@ -115,11 +123,17 @@ func _input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if press_position == null:
 		return
 
+	var screen_press: Vector2 = press_position as Vector2
+
+	if _is_press_over_exit_key(screen_press):
+		_try_request_exit()
+		return
+
 	if not _interaction_unlocked:
 		_request_approach()
 		return
 
-	_register_touch(press_position as Vector2)
+	_register_touch(screen_press)
 
 
 func _request_approach() -> void:
@@ -145,9 +159,21 @@ func _register_touch(screen_position: Vector2) -> void:
 	_play_touch_sfx()
 	touch_count_changed.emit(_touch_count)
 
-	if _touch_count >= required_touches and not _next_indicator.visible:
-		_next_indicator.visible = true
+	if _touch_count >= required_touches and not _exit_key_root.visible:
+		_show_exit_key()
 		minimum_touches_reached.emit(_touch_count)
+
+
+func _try_request_exit() -> void:
+	if not _exit_key_root.visible:
+		return
+	if _touch_count < required_touches:
+		return
+	if _exit_requested_sent:
+		return
+
+	_exit_requested_sent = true
+	exit_requested.emit()
 
 
 func _on_destination_reached(_destination: Vector2) -> void:
@@ -342,34 +368,99 @@ func _ensure_collision_shape() -> CollisionShape2D:
 		rectangle_shape = RectangleShape2D.new()
 		collision_shape.shape = rectangle_shape
 
-	rectangle_shape.size = hitbox_size.max(Vector2.ONE)
+	var combined_top: float = minf(-hitbox_size.y * 0.5, EXIT_KEY_OFFSET.y - EXIT_KEY_HITBOX_SIZE.y * 0.5)
+	var combined_bottom: float = maxf(hitbox_size.y * 0.5, EXIT_KEY_OFFSET.y + EXIT_KEY_HITBOX_SIZE.y * 0.5)
+	var combined_left: float = minf(-hitbox_size.x * 0.5, EXIT_KEY_OFFSET.x - EXIT_KEY_HITBOX_SIZE.x * 0.5)
+	var combined_right: float = maxf(hitbox_size.x * 0.5, EXIT_KEY_OFFSET.x + EXIT_KEY_HITBOX_SIZE.x * 0.5)
+
+	var combined_size: Vector2 = Vector2(combined_right - combined_left, combined_bottom - combined_top).max(Vector2.ONE)
+	var combined_center: Vector2 = Vector2(
+		(combined_left + combined_right) * 0.5,
+		(combined_top + combined_bottom) * 0.5
+	)
+
+	rectangle_shape.size = combined_size
+	collision_shape.position = combined_center
 	collision_shape.shape = rectangle_shape
 	collision_shape.disabled = not input_pickable
 	return collision_shape
 
 
-func _ensure_next_indicator() -> TextureRect:
-	var next_indicator: TextureRect = get_node_or_null("NextIndicator") as TextureRect
-	if next_indicator == null:
-		next_indicator = TextureRect.new()
-		next_indicator.name = "NextIndicator"
-		add_child(next_indicator)
+func _show_exit_key() -> void:
+	_exit_requested_sent = false
+	_exit_key_root.visible = true
+	_update_exit_key_debug_visual()
 
-	next_indicator.visible = false
-	next_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	next_indicator.position = NEXT_INDICATOR_OFFSET
-	next_indicator.size = Vector2(96.0, 96.0)
-	next_indicator.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	next_indicator.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	next_indicator.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	next_indicator.modulate = Color(1.0, 1.0, 1.0, 0.95)
 
-	if ResourceLoader.exists(NEXT_INDICATOR_TEXTURE_PATH):
-		next_indicator.texture = load(NEXT_INDICATOR_TEXTURE_PATH) as Texture2D
+func _hide_exit_key() -> void:
+	_exit_requested_sent = false
+	_exit_key_root.visible = false
+	_update_exit_key_debug_visual()
+
+
+func _is_press_over_exit_key(screen_position: Vector2) -> bool:
+	if not is_instance_valid(_exit_key_root) or not _exit_key_root.visible:
+		return false
+
+	var global_point: Vector2 = _screen_to_global_position(screen_position)
+	var local_point: Vector2 = _exit_key_root.to_local(global_point)
+	return absf(local_point.x) <= EXIT_KEY_HITBOX_SIZE.x * 0.5 and absf(local_point.y) <= EXIT_KEY_HITBOX_SIZE.y * 0.5
+
+
+func _ensure_exit_key_root() -> Node2D:
+	var exit_key_root: Node2D = get_node_or_null("ExitKey") as Node2D
+	if exit_key_root == null:
+		exit_key_root = Node2D.new()
+		exit_key_root.name = "ExitKey"
+		add_child(exit_key_root)
+
+	exit_key_root.position = EXIT_KEY_OFFSET
+	exit_key_root.z_index = 40
+	exit_key_root.visible = false
+
+	var sprite: Sprite2D = exit_key_root.get_node_or_null("Sprite2D") as Sprite2D
+	if sprite == null:
+		sprite = Sprite2D.new()
+		sprite.name = "Sprite2D"
+		exit_key_root.add_child(sprite)
+
+	sprite.centered = true
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.scale = Vector2.ONE
+	sprite.modulate = Color(1.0, 1.0, 1.0, 0.95)
+	if ResourceLoader.exists(EXIT_KEY_TEXTURE_PATH):
+		sprite.texture = load(EXIT_KEY_TEXTURE_PATH) as Texture2D
 	else:
-		push_warning("BabyInteraction nao encontrou o indicador em %s." % NEXT_INDICATOR_TEXTURE_PATH)
+		push_warning("BabyInteraction nao encontrou a chave de saida em %s." % EXIT_KEY_TEXTURE_PATH)
 
-	return next_indicator
+	var debug_rect: Polygon2D = exit_key_root.get_node_or_null("DebugRect") as Polygon2D
+	if debug_rect == null:
+		debug_rect = Polygon2D.new()
+		debug_rect.name = "DebugRect"
+		exit_key_root.add_child(debug_rect)
+
+	debug_rect.z_index = 41
+	debug_rect.color = Color(0.2, 1.0, 0.2, 0.28)
+	debug_rect.polygon = PackedVector2Array([
+		Vector2(-EXIT_KEY_HITBOX_SIZE.x * 0.5, -EXIT_KEY_HITBOX_SIZE.y * 0.5),
+		Vector2(EXIT_KEY_HITBOX_SIZE.x * 0.5, -EXIT_KEY_HITBOX_SIZE.y * 0.5),
+		Vector2(EXIT_KEY_HITBOX_SIZE.x * 0.5, EXIT_KEY_HITBOX_SIZE.y * 0.5),
+		Vector2(-EXIT_KEY_HITBOX_SIZE.x * 0.5, EXIT_KEY_HITBOX_SIZE.y * 0.5)
+	])
+	debug_rect.visible = false
+
+	return exit_key_root
+
+
+func _update_exit_key_debug_visual() -> void:
+	if not is_instance_valid(_exit_key_root):
+		return
+
+	var debug_rect: Polygon2D = _exit_key_root.get_node_or_null("DebugRect") as Polygon2D
+	if debug_rect == null:
+		return
+
+	debug_rect.visible = show_exit_key_hitbox_debug and _exit_key_root.visible
 
 
 func _build_heart_texture() -> Texture2D:
