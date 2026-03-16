@@ -368,7 +368,7 @@ offset_right = 160.0
 offset_bottom = -120.0
 grow_horizontal = 2
 z_index = 10
-text = "TEMPO: 15.0s"
+text = "15.0s"
 horizontal_alignment = 1
 vertical_alignment = 1
 
