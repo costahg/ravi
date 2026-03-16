@@ -93,260 +93,6 @@ project.md
 <files>
 This section contains the contents of the repository's files.
 
-<file path="scripts/rooms/room_4/heart_assembly_minigame.gd">
-class_name HeartAssemblyMinigame
-extends CanvasLayer
-
-signal piece_placed(piece_id: String, zone_id: String)
-signal assembly_completed()
-
-const DRAGGABLE_SCRIPT: Script = preload("res://scripts/components/draggable.gd")
-const DROP_ZONE_SCRIPT: Script = preload("res://scripts/components/drop_zone.gd")
-
-const TARGET_OFFSETS: Array[Vector2] = [
-	Vector2(-78, -78),
-	Vector2(78, -78),
-	Vector2(-126, -4),
-	Vector2(126, -4),
-	Vector2(-62, 96),
-	Vector2(62, 96)
-]
-
-var _heart_center: Vector2 = Vector2.ZERO
-var _board_scale: float = 1.0
-var _piece_polygons: Array[PackedVector2Array] = []
-var _start_positions: Array[Vector2] = []
-var _piece_colors: Array[Color] = []
-
-var _built: bool = false
-var _placed_piece_ids: Dictionary = {}
-var _filled_zone_ids: Dictionary = {}
-var _required_piece_count: int = 0
-
-
-func setup(
-	heart_center: Vector2,
-	board_scale: float,
-	piece_polygons: Array[PackedVector2Array],
-	start_positions: Array[Vector2],
-	piece_colors: Array[Color]
-) -> void:
-	_heart_center = heart_center
-	_board_scale = board_scale
-	_piece_polygons = piece_polygons
-	_start_positions = start_positions
-	_piece_colors = piece_colors
-
-	if is_inside_tree():
-		_rebuild()
-
-
-func open() -> void:
-	visible = true
-
-
-func close() -> void:
-	visible = false
-
-
-func _ready() -> void:
-	visible = false
-	if not _built and not _piece_polygons.is_empty():
-		_rebuild()
-
-
-func _rebuild() -> void:
-	_clear_children()
-	_built = true
-	_placed_piece_ids.clear()
-	_filled_zone_ids.clear()
-
-	_required_piece_count = min(
-		min(_piece_polygons.size(), _start_positions.size()),
-		min(_piece_colors.size(), TARGET_OFFSETS.size())
-	)
-
-	var dim: ColorRect = ColorRect.new()
-	dim.name = "Dim"
-	dim.color = Color(0.0, 0.0, 0.0, 0.82)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(dim)
-
-	var board_root: Node2D = Node2D.new()
-	board_root.name = "BoardRoot"
-	add_child(board_root)
-
-	var heart_shadow: Polygon2D = Polygon2D.new()
-	heart_shadow.name = "HeartShadow"
-	heart_shadow.polygon = _build_heart_silhouette()
-	heart_shadow.position = _heart_center
-	heart_shadow.scale = Vector2(_board_scale, _board_scale)
-	heart_shadow.color = Color(0.07, 0.03, 0.04, 0.92)
-	board_root.add_child(heart_shadow)
-
-	for index: int in range(_required_piece_count):
-		var zone_id: String = "heart_slot_%02d" % [index + 1]
-		var drag_id: String = "heart_piece_%02d" % [index + 1]
-		var slot_position: Vector2 = _heart_center + TARGET_OFFSETS[index]
-
-		board_root.add_child(_create_slot(zone_id, slot_position))
-		board_root.add_child(
-			_create_piece(
-				drag_id,
-				_piece_polygons[index],
-				_piece_colors[index],
-				_start_positions[index]
-			)
-		)
-
-
-func _create_slot(zone_id: String, target_position: Vector2) -> Area2D:
-	var slot: Area2D = Area2D.new()
-	slot.name = zone_id
-	slot.position = target_position
-	slot.set_script(DROP_ZONE_SCRIPT)
-	slot.set("zone_id", zone_id)
-	slot.monitoring = true
-	slot.monitorable = true
-
-	var glow: Polygon2D = Polygon2D.new()
-	glow.name = "Glow"
-	glow.polygon = _build_slot_polygon()
-	glow.color = Color(1.0, 0.78, 0.9, 0.22)
-	slot.add_child(glow)
-
-	var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-	collision.polygon = _scale_polygon(_build_slot_polygon(), 1.18)
-	slot.add_child(collision)
-
-	return slot
-
-
-func _create_piece(
-	drag_id: String,
-	piece_polygon: PackedVector2Array,
-	piece_color: Color,
-	start_position: Vector2
-) -> Area2D:
-	var piece: Area2D = Area2D.new()
-	piece.name = drag_id
-	piece.position = start_position
-	piece.set_script(DRAGGABLE_SCRIPT)
-	piece.set("drag_id", drag_id)
-	piece.set("snap_back", true)
-	piece.set("active", true)
-	piece.z_index = 10
-
-	var polygon: Polygon2D = Polygon2D.new()
-	polygon.name = "Visual"
-	polygon.polygon = piece_polygon
-	polygon.color = piece_color
-	piece.add_child(polygon)
-
-	var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-	collision.polygon = _scale_polygon(piece_polygon, 1.35)
-	piece.add_child(collision)
-
-	piece.dropped_on_target.connect(_on_piece_dropped.bind(piece))
-
-	return piece
-
-
-func _on_piece_dropped(piece_id: String, target_area: Area2D, piece: Area2D) -> void:
-	if piece_id == "" or target_area == null or piece == null:
-		return
-	if _placed_piece_ids.has(piece_id):
-		return
-
-	var zone_id: String = str(target_area.get("zone_id"))
-	if zone_id == "":
-		return
-	if _filled_zone_ids.has(zone_id):
-		_snap_piece_back(piece)
-		return
-
-	_filled_zone_ids[zone_id] = true
-	_placed_piece_ids[piece_id] = true
-
-	piece.set("active", false)
-	piece.monitoring = false
-	piece.monitorable = false
-	piece.global_position = target_area.global_position
-	piece.z_index = 1
-
-	var visual: Polygon2D = piece.get_node_or_null("Visual") as Polygon2D
-	if visual != null:
-		visual.color = visual.color.lightened(0.12)
-
-	var glow: Polygon2D = target_area.get_node_or_null("Glow") as Polygon2D
-	if glow != null:
-		glow.visible = false
-
-	target_area.monitoring = false
-	target_area.monitorable = false
-
-	var tween: Tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(piece, "scale", Vector2(1.08, 1.08), 0.1)
-	tween.tween_property(piece, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.1)
-	tween.chain().tween_property(piece, "scale", Vector2.ONE, 0.12)
-
-	piece_placed.emit(piece_id, zone_id)
-
-	if _placed_piece_ids.size() >= _required_piece_count:
-		assembly_completed.emit()
-
-
-func _snap_piece_back(piece: Area2D) -> void:
-	if piece == null:
-		return
-
-	var origin: Vector2 = piece.global_position
-	if "snap_back" in piece and bool(piece.get("snap_back")):
-		var tween: Tween = create_tween()
-		tween.set_trans(Tween.TRANS_SINE)
-		tween.set_ease(Tween.EASE_OUT)
-		tween.tween_property(piece, "global_position", origin, 0.01)
-
-
-func _clear_children() -> void:
-	for child: Node in get_children():
-		child.queue_free()
-
-
-func _build_heart_silhouette() -> PackedVector2Array:
-	var silhouette: PackedVector2Array = PackedVector2Array()
-
-	for angle_step: int in range(0, 360, 12):
-		var radians: float = deg_to_rad(float(angle_step))
-		var x: float = 16.0 * pow(sin(radians), 3.0)
-		var y: float = -(13.0 * cos(radians) - 5.0 * cos(2.0 * radians) - 2.0 * cos(3.0 * radians) - cos(4.0 * radians))
-		silhouette.append(Vector2(x, y) * 10.0)
-
-	return silhouette
-
-
-func _build_slot_polygon() -> PackedVector2Array:
-	return PackedVector2Array([
-		Vector2(-28, 0),
-		Vector2(-14, -18),
-		Vector2(0, -24),
-		Vector2(14, -18),
-		Vector2(28, 0),
-		Vector2(0, 28)
-	])
-
-
-func _scale_polygon(source: PackedVector2Array, factor: float) -> PackedVector2Array:
-	var result: PackedVector2Array = PackedVector2Array()
-
-	for point: Vector2 in source:
-		result.append(point * factor)
-
-	return result
-</file>
-
 <file path="scenes/components/projectile.tscn">
 [gd_scene load_steps=5 format=3]
 
@@ -1917,25 +1663,6 @@ script = ExtResource("1_3o27u")
 [connection signal="revealed" from="LeafCard/Revealer" to="SunCard/Revealer" method="reveal"]
 </file>
 
-<file path="scripts/components/drop_zone.gd">
-extends Area2D
-
-const DROP_TARGET_GROUP: StringName = &"drop_target"
-
-@export var zone_id: String = ""
-@export var accepted_id: String = ""
-
-
-func _ready() -> void:
-	add_to_group(DROP_TARGET_GROUP)
-
-
-func accepts_drag_id(drag_id: String) -> bool:
-	if accepted_id == "":
-		return true
-	return drag_id == accepted_id
-</file>
-
 <file path="scripts/components/event_chain.gd">
 extends Node
 class_name EventChain
@@ -2436,6 +2163,260 @@ func _on_screen_exited() -> void:
 
 func _on_lifetime_timeout() -> void:
 	queue_free()
+</file>
+
+<file path="scripts/rooms/room_4/heart_assembly_minigame.gd">
+class_name HeartAssemblyMinigame
+extends CanvasLayer
+
+signal piece_placed(piece_id: String, zone_id: String)
+signal assembly_completed()
+
+const DRAGGABLE_SCRIPT: Script = preload("res://scripts/components/draggable.gd")
+const DROP_ZONE_SCRIPT: Script = preload("res://scripts/components/drop_zone.gd")
+
+const TARGET_OFFSETS: Array[Vector2] = [
+	Vector2(-78, -78),
+	Vector2(78, -78),
+	Vector2(-126, -4),
+	Vector2(126, -4),
+	Vector2(-62, 96),
+	Vector2(62, 96)
+]
+
+var _heart_center: Vector2 = Vector2.ZERO
+var _board_scale: float = 1.0
+var _piece_polygons: Array[PackedVector2Array] = []
+var _start_positions: Array[Vector2] = []
+var _piece_colors: Array[Color] = []
+
+var _built: bool = false
+var _placed_piece_ids: Dictionary = {}
+var _filled_zone_ids: Dictionary = {}
+var _required_piece_count: int = 0
+
+
+func setup(
+	heart_center: Vector2,
+	board_scale: float,
+	piece_polygons: Array[PackedVector2Array],
+	start_positions: Array[Vector2],
+	piece_colors: Array[Color]
+) -> void:
+	_heart_center = heart_center
+	_board_scale = board_scale
+	_piece_polygons = piece_polygons
+	_start_positions = start_positions
+	_piece_colors = piece_colors
+
+	if is_inside_tree():
+		_rebuild()
+
+
+func open() -> void:
+	visible = true
+
+
+func close() -> void:
+	visible = false
+
+
+func _ready() -> void:
+	visible = false
+	if not _built and not _piece_polygons.is_empty():
+		_rebuild()
+
+
+func _rebuild() -> void:
+	_clear_children()
+	_built = true
+	_placed_piece_ids.clear()
+	_filled_zone_ids.clear()
+
+	_required_piece_count = min(
+		min(_piece_polygons.size(), _start_positions.size()),
+		min(_piece_colors.size(), TARGET_OFFSETS.size())
+	)
+
+	var dim: ColorRect = ColorRect.new()
+	dim.name = "Dim"
+	dim.color = Color(0.0, 0.0, 0.0, 0.82)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(dim)
+
+	var board_root: Node2D = Node2D.new()
+	board_root.name = "BoardRoot"
+	add_child(board_root)
+
+	var heart_shadow: Polygon2D = Polygon2D.new()
+	heart_shadow.name = "HeartShadow"
+	heart_shadow.polygon = _build_heart_silhouette()
+	heart_shadow.position = _heart_center
+	heart_shadow.scale = Vector2(_board_scale, _board_scale)
+	heart_shadow.color = Color(0.07, 0.03, 0.04, 0.92)
+	board_root.add_child(heart_shadow)
+
+	for index: int in range(_required_piece_count):
+		var zone_id: String = "heart_slot_%02d" % [index + 1]
+		var drag_id: String = "heart_piece_%02d" % [index + 1]
+		var slot_position: Vector2 = _heart_center + TARGET_OFFSETS[index]
+
+		board_root.add_child(_create_slot(zone_id, slot_position))
+		board_root.add_child(
+			_create_piece(
+				drag_id,
+				_piece_polygons[index],
+				_piece_colors[index],
+				_start_positions[index]
+			)
+		)
+
+
+func _create_slot(zone_id: String, target_position: Vector2) -> Area2D:
+	var slot: Area2D = Area2D.new()
+	slot.name = zone_id
+	slot.position = target_position
+	slot.set_script(DROP_ZONE_SCRIPT)
+	slot.set("zone_id", zone_id)
+	slot.monitoring = true
+	slot.monitorable = true
+
+	var glow: Polygon2D = Polygon2D.new()
+	glow.name = "Glow"
+	glow.polygon = _build_slot_polygon()
+	glow.color = Color(1.0, 0.78, 0.9, 0.22)
+	slot.add_child(glow)
+
+	var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+	collision.polygon = _scale_polygon(_build_slot_polygon(), 1.18)
+	slot.add_child(collision)
+
+	return slot
+
+
+func _create_piece(
+	drag_id: String,
+	piece_polygon: PackedVector2Array,
+	piece_color: Color,
+	start_position: Vector2
+) -> Area2D:
+	var piece: Area2D = Area2D.new()
+	piece.name = drag_id
+	piece.position = start_position
+	piece.set_script(DRAGGABLE_SCRIPT)
+	piece.set("drag_id", drag_id)
+	piece.set("snap_back", true)
+	piece.set("active", true)
+	piece.z_index = 10
+
+	var polygon: Polygon2D = Polygon2D.new()
+	polygon.name = "Visual"
+	polygon.polygon = piece_polygon
+	polygon.color = piece_color
+	piece.add_child(polygon)
+
+	var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+	collision.polygon = _scale_polygon(piece_polygon, 1.35)
+	piece.add_child(collision)
+
+	piece.dropped_on_target.connect(_on_piece_dropped.bind(piece))
+
+	return piece
+
+
+func _on_piece_dropped(piece_id: String, target_area: Area2D, piece: Area2D) -> void:
+	if piece_id == "" or target_area == null or piece == null:
+		return
+	if _placed_piece_ids.has(piece_id):
+		return
+
+	var zone_id: String = str(target_area.get("zone_id"))
+	if zone_id == "":
+		return
+	if _filled_zone_ids.has(zone_id):
+		_snap_piece_back(piece)
+		return
+
+	_filled_zone_ids[zone_id] = true
+	_placed_piece_ids[piece_id] = true
+
+	piece.set("active", false)
+	piece.monitoring = false
+	piece.monitorable = false
+	piece.global_position = target_area.global_position
+	piece.z_index = 1
+
+	var visual: Polygon2D = piece.get_node_or_null("Visual") as Polygon2D
+	if visual != null:
+		visual.color = visual.color.lightened(0.12)
+
+	var glow: Polygon2D = target_area.get_node_or_null("Glow") as Polygon2D
+	if glow != null:
+		glow.visible = false
+
+	target_area.monitoring = false
+	target_area.monitorable = false
+
+	var tween: Tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(piece, "scale", Vector2(1.08, 1.08), 0.1)
+	tween.tween_property(piece, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.1)
+	tween.chain().tween_property(piece, "scale", Vector2.ONE, 0.12)
+
+	piece_placed.emit(piece_id, zone_id)
+
+	if _placed_piece_ids.size() >= _required_piece_count:
+		assembly_completed.emit()
+
+
+func _snap_piece_back(piece: Area2D) -> void:
+	if piece == null:
+		return
+
+	var origin: Vector2 = piece.global_position
+	if "snap_back" in piece and bool(piece.get("snap_back")):
+		var tween: Tween = create_tween()
+		tween.set_trans(Tween.TRANS_SINE)
+		tween.set_ease(Tween.EASE_OUT)
+		tween.tween_property(piece, "global_position", origin, 0.01)
+
+
+func _clear_children() -> void:
+	for child: Node in get_children():
+		child.queue_free()
+
+
+func _build_heart_silhouette() -> PackedVector2Array:
+	var silhouette: PackedVector2Array = PackedVector2Array()
+
+	for angle_step: int in range(0, 360, 12):
+		var radians: float = deg_to_rad(float(angle_step))
+		var x: float = 16.0 * pow(sin(radians), 3.0)
+		var y: float = -(13.0 * cos(radians) - 5.0 * cos(2.0 * radians) - 2.0 * cos(3.0 * radians) - cos(4.0 * radians))
+		silhouette.append(Vector2(x, y) * 10.0)
+
+	return silhouette
+
+
+func _build_slot_polygon() -> PackedVector2Array:
+	return PackedVector2Array([
+		Vector2(-28, 0),
+		Vector2(-14, -18),
+		Vector2(0, -24),
+		Vector2(14, -18),
+		Vector2(28, 0),
+		Vector2(0, 28)
+	])
+
+
+func _scale_polygon(source: PackedVector2Array, factor: float) -> PackedVector2Array:
+	var result: PackedVector2Array = PackedVector2Array()
+
+	for point: Vector2 in source:
+		result.append(point * factor)
+
+	return result
 </file>
 
 <file path="scripts/rooms/main_menu_controller.gd">
@@ -5525,169 +5506,23 @@ horizontal_alignment = 1
 vertical_alignment = 1
 </file>
 
-<file path="scripts/components/draggable.gd">
+<file path="scripts/components/drop_zone.gd">
 extends Area2D
 
-signal drag_started(drag_id: String)
-signal drag_ended(drag_id: String)
-signal dropped_on_target(drag_id: String, target_area: Area2D)
-
 const DROP_TARGET_GROUP: StringName = &"drop_target"
-const SNAP_BACK_DURATION: float = 0.2
 
-@export var drag_id: String = ""
-@export var snap_back: bool = true
-@export var snap_distance: float = 40.0
-@export var active: bool = true
-
-static var _drag_owner: Node = null
-
-var _origin_position: Vector2 = Vector2.ZERO
-var _dragging: bool = false
-var _active_touch_index: int = -1
-var _mouse_dragging: bool = false
+@export var zone_id: String = ""
+@export var accepted_id: String = ""
 
 
 func _ready() -> void:
-	_origin_position = global_position
-	input_pickable = true
-	monitoring = true
-	monitorable = true
-	set_process_input(true)
+	add_to_group(DROP_TARGET_GROUP)
 
 
-func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
-	if not active:
-		return
-
-	if _dragging or (_drag_owner != null and _drag_owner != self):
-		return
-
-	if event is InputEventMouseButton:
-		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
-		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			_begin_mouse_drag()
-			return
-
-	if event is InputEventScreenTouch:
-		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
-		if touch_event.pressed:
-			_begin_touch_drag(touch_event.index)
-
-
-func _input(event: InputEvent) -> void:
-	if not _dragging:
-		return
-
-	if _mouse_dragging and event is InputEventMouseMotion:
-		var mouse_motion: InputEventMouseMotion = event as InputEventMouseMotion
-		global_position = _screen_to_global_position(mouse_motion.position)
-		return
-
-	if _mouse_dragging and event is InputEventMouseButton:
-		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
-		if mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
-			_finish_drag()
-			return
-
-	if _active_touch_index != -1 and event is InputEventScreenDrag:
-		var drag_event: InputEventScreenDrag = event as InputEventScreenDrag
-		if drag_event.index == _active_touch_index:
-			global_position = _screen_to_global_position(drag_event.position)
-			return
-
-	if _active_touch_index != -1 and event is InputEventScreenTouch:
-		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
-		if touch_event.index == _active_touch_index and not touch_event.pressed:
-			_finish_drag()
-
-
-func _on_dropped() -> void:
-	if not _dragging:
-		return
-
-	var target_area: Area2D = _find_drop_target()
-	if target_area != null and _can_drop_on_target(target_area):
-		global_position = target_area.global_position
-		_origin_position = global_position
-		dropped_on_target.emit(drag_id, target_area)
-		return
-
-	_snap_back_to_origin()
-
-
-func _begin_mouse_drag() -> void:
-	_dragging = true
-	_mouse_dragging = true
-	_active_touch_index = -1
-	_drag_owner = self
-	drag_started.emit(drag_id)
-
-
-func _begin_touch_drag(touch_index: int) -> void:
-	_dragging = true
-	_mouse_dragging = false
-	_active_touch_index = touch_index
-	_drag_owner = self
-	drag_started.emit(drag_id)
-
-
-func _finish_drag() -> void:
-	if not _dragging:
-		return
-
-	_on_dropped()
-	_dragging = false
-	_mouse_dragging = false
-	_active_touch_index = -1
-	if _drag_owner == self:
-		_drag_owner = null
-	drag_ended.emit(drag_id)
-
-
-func _find_drop_target() -> Area2D:
-	var closest_target: Area2D = null
-	var closest_distance: float = INF
-
-	for area: Area2D in get_overlapping_areas():
-		if not area.is_in_group(DROP_TARGET_GROUP):
-			continue
-
-		var distance_to_target: float = global_position.distance_to(area.global_position)
-		if closest_target == null or distance_to_target < closest_distance:
-			closest_target = area
-			closest_distance = distance_to_target
-
-	return closest_target
-
-
-func _can_drop_on_target(target_area: Area2D) -> bool:
-	if target_area == null:
-		return false
-
-	if target_area.has_method("accepts_drag_id"):
-		return bool(target_area.call("accepts_drag_id", drag_id))
-
-	if "accepted_id" in target_area:
-		var accepted_id: Variant = target_area.get("accepted_id")
-		if accepted_id is String and String(accepted_id) != "":
-			return String(accepted_id) == drag_id
-
-	return true
-
-
-func _snap_back_to_origin() -> void:
-	if not snap_back:
-		return
-
-	var tween: Tween = create_tween()
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "global_position", _origin_position, SNAP_BACK_DURATION)
-
-
-func _screen_to_global_position(screen_position: Vector2) -> Vector2:
-	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
+func accepts_drag_id(drag_id: String) -> bool:
+	if accepted_id == "":
+		return true
+	return drag_id == accepted_id
 </file>
 
 <file path="scripts/components/hotspot.gd">
@@ -6495,297 +6330,6 @@ func _screen_to_global_position(screen_position: Vector2) -> Vector2:
 	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
 </file>
 
-<file path="scripts/rooms/room_4_controller.gd">
-extends Node2D
-
-const TOTAL_HEART_PIECES := 6
-const PIECE_COLORS: Array[Color] = [
-	Color(0.94902, 0.447059, 0.627451, 0.92),
-	Color(0.984314, 0.545098, 0.705882, 0.92),
-	Color(0.905882, 0.345098, 0.572549, 0.92),
-	Color(1.0, 0.627451, 0.764706, 0.92),
-	Color(0.972549, 0.501961, 0.670588, 0.92),
-	Color(1.0, 0.576471, 0.72549, 0.92)
-]
-const MINIGAME_POSITIONS: Array[Vector2] = [
-	Vector2(95, 860),
-	Vector2(165, 860),
-	Vector2(235, 860),
-	Vector2(305, 860),
-	Vector2(375, 860),
-	Vector2(445, 860)
-]
-const HEART_CENTER := Vector2(270, 430)
-const BOARD_SCALE := 1.55
-const ARRIVAL_TOLERANCE := 24.0
-
-const HEART_ASSEMBLY_MINIGAME_SCRIPT: Script = preload("res://scripts/rooms/room_4/heart_assembly_minigame.gd")
-
-@onready var _protagonist: Node2D = $Protagonist
-@onready var _assembly_area: Node2D = $AssemblyArea
-@onready var _assembly_hotspot: Area2D = $AssemblyArea/AssemblyHotspot
-@onready var _crying_boy: Node2D = $CryingBoy
-@onready var _henri: AnimatedSprite2D = $CryingBoy/Henri
-@onready var _heart_pieces_root: Node = $HeartPieces
-
-var _pieces_collected := 0
-var _assembled_pieces := 0
-var _collected_piece_ids: Dictionary = {}
-var _assembled_piece_ids: Dictionary = {}
-var _awaiting_assembly_arrival := false
-var _assembly_unlocked := false
-var _minigame_opened := false
-var _assembly_completed := false
-var _assembly_minigame: CanvasLayer
-var _pending_piece_id := ""
-var _pending_piece_node: Node2D
-var _pending_piece_target := Vector2.ZERO
-var _carried_heart: Node2D
-
-
-func _ready() -> void:
-	if _protagonist != null and not _protagonist.destination_reached.is_connected(_on_protagonist_destination_reached):
-		_protagonist.destination_reached.connect(_on_protagonist_destination_reached)
-
-	if _assembly_hotspot != null:
-		if not _assembly_hotspot.pressed.is_connected(_on_assembly_hotspot_pressed):
-			_assembly_hotspot.pressed.connect(_on_assembly_hotspot_pressed)
-		_assembly_hotspot.set("active", false)
-
-	_connect_piece_hotspots()
-	_build_carried_heart()
-	_build_minigame()
-	_update_boy_feedback()
-
-
-func notify_piece_collected(piece_id: String, piece_node: Node2D) -> void:
-	if piece_id == "" or _collected_piece_ids.has(piece_id):
-		return
-
-	_collected_piece_ids[piece_id] = true
-	_pieces_collected = _collected_piece_ids.size()
-
-	if piece_node != null:
-		piece_node.visible = false
-		piece_node.process_mode = Node.PROCESS_MODE_DISABLED
-
-		var hotspot: Node = piece_node.get_node_or_null("Hotspot")
-		if hotspot != null:
-			hotspot.set("active", false)
-
-	_update_boy_feedback()
-
-	if _pieces_collected >= TOTAL_HEART_PIECES:
-		_unlock_assembly_area()
-		_show_carried_heart()
-
-
-func are_all_pieces_collected() -> bool:
-	return _pieces_collected >= TOTAL_HEART_PIECES
-
-
-func get_pieces_collected() -> int:
-	return _pieces_collected
-
-
-func _connect_piece_hotspots() -> void:
-	if _heart_pieces_root == null:
-		return
-
-	for piece: Node in _heart_pieces_root.get_children():
-		var piece_node: Node2D = piece as Node2D
-		if piece_node == null:
-			continue
-
-		var hotspot: Area2D = piece_node.get_node_or_null("Hotspot") as Area2D
-		if hotspot == null:
-			continue
-
-		var callback: Callable = Callable(self, "_on_piece_hotspot_pressed").bind(piece_node)
-		if not hotspot.pressed.is_connected(callback):
-			hotspot.pressed.connect(callback)
-
-
-func _on_piece_hotspot_pressed(hotspot_id: String, piece_node: Node2D) -> void:
-	if hotspot_id == "" or piece_node == null:
-		return
-	if _minigame_opened or _awaiting_assembly_arrival or _pending_piece_id != "":
-		return
-	if _collected_piece_ids.has(hotspot_id) or _protagonist == null:
-		return
-
-	_pending_piece_id = hotspot_id
-	_pending_piece_node = piece_node
-	_pending_piece_target = piece_node.global_position
-
-	_protagonist.set_manual_input_enabled(false)
-	_protagonist.consume_next_press()
-	_protagonist.move_to_global_position(_pending_piece_target)
-
-
-func _on_assembly_hotspot_pressed(_hotspot_id: String) -> void:
-	if not are_all_pieces_collected() or _awaiting_assembly_arrival or _minigame_opened:
-		return
-	if _protagonist == null or _assembly_area == null:
-		return
-
-	_awaiting_assembly_arrival = true
-	_protagonist.set_manual_input_enabled(false)
-	_protagonist.consume_next_press()
-	_protagonist.move_to_global_position(_assembly_area.global_position)
-
-
-func _on_protagonist_destination_reached(destination: Vector2) -> void:
-	if _pending_piece_id != "":
-		if destination.distance_to(_pending_piece_target) <= ARRIVAL_TOLERANCE:
-			notify_piece_collected(_pending_piece_id, _pending_piece_node)
-			_pending_piece_id = ""
-			_pending_piece_node = null
-			_pending_piece_target = Vector2.ZERO
-
-			if not _minigame_opened:
-				_protagonist.set_manual_input_enabled(true)
-		return
-
-	if _awaiting_assembly_arrival and _assembly_area != null:
-		if destination.distance_to(_assembly_area.global_position) <= ARRIVAL_TOLERANCE:
-			_awaiting_assembly_arrival = false
-			_hide_carried_heart()
-			_open_minigame()
-
-
-func _unlock_assembly_area() -> void:
-	if _assembly_unlocked:
-		return
-
-	_assembly_unlocked = true
-
-	if _assembly_hotspot != null:
-		_assembly_hotspot.set("active", true)
-
-	if _assembly_area != null:
-		var tween: Tween = create_tween()
-		tween.set_loops(4)
-		tween.tween_property(_assembly_area, "scale", Vector2(1.08, 1.08), 0.18)
-		tween.tween_property(_assembly_area, "scale", Vector2.ONE, 0.18)
-
-
-func _build_carried_heart() -> void:
-	if _protagonist == null or _carried_heart != null:
-		return
-
-	_carried_heart = Node2D.new()
-	_carried_heart.name = "CarriedHeart"
-	_carried_heart.position = Vector2(0, -58)
-	_carried_heart.visible = false
-
-	var heart: Polygon2D = Polygon2D.new()
-	heart.polygon = _build_heart_silhouette()
-	heart.scale = Vector2(0.11, 0.11)
-	heart.color = Color(0.98, 0.54, 0.72, 0.95)
-
-	_carried_heart.add_child(heart)
-	_protagonist.add_child(_carried_heart)
-
-
-func _show_carried_heart() -> void:
-	if _carried_heart != null:
-		_carried_heart.visible = true
-
-
-func _hide_carried_heart() -> void:
-	if _carried_heart != null:
-		_carried_heart.visible = false
-
-
-func _build_minigame() -> void:
-	if _assembly_minigame != null:
-		return
-
-	_assembly_minigame = HEART_ASSEMBLY_MINIGAME_SCRIPT.new() as CanvasLayer
-	_assembly_minigame.name = "HeartAssemblyMinigame"
-	add_child(_assembly_minigame)
-
-	_assembly_minigame.call(
-		"setup",
-		HEART_CENTER,
-		BOARD_SCALE,
-		_build_piece_polygons(),
-		MINIGAME_POSITIONS,
-		PIECE_COLORS
-	)
-
-	if not _assembly_minigame.is_connected("piece_placed", _on_minigame_piece_placed):
-		_assembly_minigame.connect("piece_placed", _on_minigame_piece_placed)
-
-	if not _assembly_minigame.is_connected("assembly_completed", _on_minigame_completed):
-		_assembly_minigame.connect("assembly_completed", _on_minigame_completed)
-
-
-func _open_minigame() -> void:
-	if _minigame_opened or _assembly_minigame == null:
-		return
-
-	_minigame_opened = true
-	_assembly_minigame.call("open")
-
-	if _protagonist != null:
-		_protagonist.set_manual_input_enabled(false)
-
-
-func _on_minigame_piece_placed(piece_id: String, _zone_id: String) -> void:
-	if piece_id == "" or _assembled_piece_ids.has(piece_id):
-		return
-
-	_assembled_piece_ids[piece_id] = true
-	_assembled_pieces = _assembled_piece_ids.size()
-	_update_boy_feedback()
-
-
-func _on_minigame_completed() -> void:
-	if _assembly_completed:
-		return
-
-	_assembly_completed = true
-	_update_boy_feedback()
-
-
-func _build_piece_polygons() -> Array[PackedVector2Array]:
-	return [
-		PackedVector2Array([Vector2(-26, 0), Vector2(-12, -20), Vector2(0, -28), Vector2(12, -20), Vector2(26, 0), Vector2(0, 28)]),
-		PackedVector2Array([Vector2(-24, 0), Vector2(-10, -18), Vector2(0, -26), Vector2(10, -18), Vector2(24, 0), Vector2(0, 24)]),
-		PackedVector2Array([Vector2(-22, 0), Vector2(-10, -16), Vector2(0, -24), Vector2(10, -16), Vector2(22, 0), Vector2(0, 22)]),
-		PackedVector2Array([Vector2(-24, 0), Vector2(-11, -18), Vector2(0, -26), Vector2(11, -18), Vector2(24, 0), Vector2(0, 25)]),
-		PackedVector2Array([Vector2(-23, 0), Vector2(-10, -17), Vector2(0, -25), Vector2(10, -17), Vector2(23, 0), Vector2(0, 23)]),
-		PackedVector2Array([Vector2(-25, 0), Vector2(-12, -19), Vector2(0, -27), Vector2(12, -19), Vector2(25, 0), Vector2(0, 26)])
-	]
-
-
-func _build_heart_silhouette() -> PackedVector2Array:
-	var silhouette: PackedVector2Array = PackedVector2Array()
-
-	for angle_step: int in range(0, 360, 12):
-		var radians: float = deg_to_rad(float(angle_step))
-		var x: float = 16.0 * pow(sin(radians), 3.0)
-		var y: float = -(13.0 * cos(radians) - 5.0 * cos(2.0 * radians) - 2.0 * cos(3.0 * radians) - cos(4.0 * radians))
-		silhouette.append(Vector2(x, y) * 10.0)
-
-	return silhouette
-
-
-func _update_boy_feedback() -> void:
-	if _henri == null or _crying_boy == null:
-		return
-
-	var total_progress_steps: float = float(TOTAL_HEART_PIECES * 2)
-	var current_progress: float = float(_pieces_collected + _assembled_pieces)
-	var progress: float = clampf(current_progress / total_progress_steps, 0.0, 1.0)
-
-	_crying_boy.scale = Vector2.ONE.lerp(Vector2(1.1, 1.1), progress)
-	_henri.modulate = Color(1.0, 0.72 + (0.28 * progress), 0.72 + (0.18 * progress), 1.0)
-	_henri.speed_scale = 1.0 - (0.45 * progress)
-</file>
-
 <file path="node.tscn">
 [gd_scene load_steps=31 format=3 uid="uid://dksnxri6gl12u"]
 
@@ -6998,6 +6542,171 @@ animations = [{
 [node name="Node" type="AnimatedSprite2D"]
 sprite_frames = SubResource("SpriteFrames_1am0g")
 frame_progress = 0.15782659
+</file>
+
+<file path="scripts/components/draggable.gd">
+extends Area2D
+
+signal drag_started(drag_id: String)
+signal drag_ended(drag_id: String)
+signal dropped_on_target(drag_id: String, target_area: Area2D)
+
+const DROP_TARGET_GROUP: StringName = &"drop_target"
+const SNAP_BACK_DURATION: float = 0.2
+
+@export var drag_id: String = ""
+@export var snap_back: bool = true
+@export var snap_distance: float = 40.0
+@export var active: bool = true
+
+static var _drag_owner: Node = null
+
+var _origin_position: Vector2 = Vector2.ZERO
+var _dragging: bool = false
+var _active_touch_index: int = -1
+var _mouse_dragging: bool = false
+
+
+func _ready() -> void:
+	_origin_position = global_position
+	input_pickable = true
+	monitoring = true
+	monitorable = true
+	set_process_input(true)
+
+
+func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
+	if not active:
+		return
+
+	if _dragging or (_drag_owner != null and _drag_owner != self):
+		return
+
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_begin_mouse_drag()
+			return
+
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.pressed:
+			_begin_touch_drag(touch_event.index)
+
+
+func _input(event: InputEvent) -> void:
+	if not _dragging:
+		return
+
+	if _mouse_dragging and event is InputEventMouseMotion:
+		var mouse_motion: InputEventMouseMotion = event as InputEventMouseMotion
+		global_position = _screen_to_global_position(mouse_motion.position)
+		return
+
+	if _mouse_dragging and event is InputEventMouseButton:
+		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
+			_finish_drag()
+			return
+
+	if _active_touch_index != -1 and event is InputEventScreenDrag:
+		var drag_event: InputEventScreenDrag = event as InputEventScreenDrag
+		if drag_event.index == _active_touch_index:
+			global_position = _screen_to_global_position(drag_event.position)
+			return
+
+	if _active_touch_index != -1 and event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.index == _active_touch_index and not touch_event.pressed:
+			_finish_drag()
+
+
+func _on_dropped() -> void:
+	if not _dragging:
+		return
+
+	var target_area: Area2D = _find_drop_target()
+	if target_area != null and _can_drop_on_target(target_area):
+		global_position = target_area.global_position
+		_origin_position = global_position
+		dropped_on_target.emit(drag_id, target_area)
+		return
+
+	_snap_back_to_origin()
+
+
+func _begin_mouse_drag() -> void:
+	_dragging = true
+	_mouse_dragging = true
+	_active_touch_index = -1
+	_drag_owner = self
+	drag_started.emit(drag_id)
+
+
+func _begin_touch_drag(touch_index: int) -> void:
+	_dragging = true
+	_mouse_dragging = false
+	_active_touch_index = touch_index
+	_drag_owner = self
+	drag_started.emit(drag_id)
+
+
+func _finish_drag() -> void:
+	if not _dragging:
+		return
+
+	_on_dropped()
+	_dragging = false
+	_mouse_dragging = false
+	_active_touch_index = -1
+	if _drag_owner == self:
+		_drag_owner = null
+	drag_ended.emit(drag_id)
+
+
+func _find_drop_target() -> Area2D:
+	var closest_target: Area2D = null
+	var closest_distance: float = INF
+
+	for area: Area2D in get_overlapping_areas():
+		if not area.is_in_group(DROP_TARGET_GROUP):
+			continue
+
+		var distance_to_target: float = global_position.distance_to(area.global_position)
+		if closest_target == null or distance_to_target < closest_distance:
+			closest_target = area
+			closest_distance = distance_to_target
+
+	return closest_target
+
+
+func _can_drop_on_target(target_area: Area2D) -> bool:
+	if target_area == null:
+		return false
+
+	if target_area.has_method("accepts_drag_id"):
+		return bool(target_area.call("accepts_drag_id", drag_id))
+
+	if "accepted_id" in target_area:
+		var accepted_id: Variant = target_area.get("accepted_id")
+		if accepted_id is String and String(accepted_id) != "":
+			return String(accepted_id) == drag_id
+
+	return true
+
+
+func _snap_back_to_origin() -> void:
+	if not snap_back:
+		return
+
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "global_position", _origin_position, SNAP_BACK_DURATION)
+
+
+func _screen_to_global_position(screen_position: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
 </file>
 
 <file path="scripts/core/audio_manager.gd">
@@ -7439,6 +7148,560 @@ func _get_bgm_track_key_for_scene_path(scene_path: String) -> String:
 				return "finale"
 
 	return ""
+</file>
+
+<file path="scripts/rooms/room_4_controller.gd">
+extends Node2D
+
+const TOTAL_HEART_PIECES: int = 6
+const PIECE_COLORS: Array[Color] = [
+	Color(0.94902, 0.447059, 0.627451, 0.92),
+	Color(0.984314, 0.545098, 0.705882, 0.92),
+	Color(0.905882, 0.345098, 0.572549, 0.92),
+	Color(1.0, 0.627451, 0.764706, 0.92),
+	Color(0.972549, 0.501961, 0.670588, 0.92),
+	Color(1.0, 0.576471, 0.72549, 0.92)
+]
+const MINIGAME_POSITIONS: Array[Vector2] = [
+	Vector2(95, 860),
+	Vector2(165, 860),
+	Vector2(235, 860),
+	Vector2(305, 860),
+	Vector2(375, 860),
+	Vector2(445, 860)
+]
+const HEART_CENTER: Vector2 = Vector2(270, 430)
+const BOARD_SCALE: float = 1.55
+const ARRIVAL_TOLERANCE: float = 24.0
+
+const HENRI_IDLE_COLUMNS: int = 6
+const HENRI_IDLE_ROWS: int = 6
+const HENRI_FRAME_SIZE: Vector2 = Vector2(256, 256)
+
+const FINALE_HENRI_POSITION: Vector2 = Vector2(208, 508)
+const FINALE_DOLL_POSITION: Vector2 = Vector2(332, 508)
+const FINALE_SPAWN_OFFSET_Y: float = 52.0
+const FINALE_FADE_OUT_DURATION: float = 0.7
+const FINALE_FADE_IN_DURATION: float = 0.8
+const FINALE_SPAWN_DURATION: float = 0.45
+const FINALE_PHOTO_POSE_DURATION: float = 0.35
+const FINALE_FLASH_DURATION: float = 0.14
+const FINALE_FREEZE_DURATION: float = 1.5
+
+const HEART_ASSEMBLY_MINIGAME_SCRIPT: Script = preload("res://scripts/rooms/room_4/heart_assembly_minigame.gd")
+const EVENT_CHAIN_SCRIPT: Script = preload("res://scripts/components/event_chain.gd")
+const HENRI_IDLE_TEXTURE: Texture2D = preload("res://assets/sprites/HenriIdle-1256x256_6C6L_S01.png")
+
+@onready var _background_before: AnimatedSprite2D = $BackgroundBefore
+@onready var _background_after: AnimatedSprite2D = $BackgroundAfter
+@onready var _assembly_area: Node2D = $AssemblyArea
+@onready var _assembly_hotspot: Area2D = $AssemblyArea/AssemblyHotspot
+@onready var _crying_boy: Node2D = $CryingBoy
+@onready var _henri: AnimatedSprite2D = $CryingBoy/Henri
+@onready var _doll: Node2D = $Doll
+@onready var _boneca: AnimatedSprite2D = $Doll/Boneca
+@onready var _heart_pieces_root: Node = $HeartPieces
+@onready var _protagonist: Node2D = $Protagonist
+
+var _pieces_collected: int = 0
+var _assembled_pieces: int = 0
+var _collected_piece_ids: Dictionary = {}
+var _assembled_piece_ids: Dictionary = {}
+var _awaiting_assembly_arrival: bool = false
+var _assembly_unlocked: bool = false
+var _minigame_opened: bool = false
+var _assembly_completed: bool = false
+var _finale_triggered: bool = false
+
+var _assembly_minigame: CanvasLayer
+var _pending_piece_id: String = ""
+var _pending_piece_node: Node2D
+var _pending_piece_target: Vector2 = Vector2.ZERO
+var _carried_heart: Node2D
+
+var _finale_chain: EventChain
+var _finale_overlay_layer: CanvasLayer
+var _finale_fade_rect: ColorRect
+var _finale_flash_rect: ColorRect
+
+
+func _ready() -> void:
+	if _protagonist != null and not _protagonist.destination_reached.is_connected(_on_protagonist_destination_reached):
+		_protagonist.destination_reached.connect(_on_protagonist_destination_reached)
+
+	if _assembly_hotspot != null:
+		if not _assembly_hotspot.pressed.is_connected(_on_assembly_hotspot_pressed):
+			_assembly_hotspot.pressed.connect(_on_assembly_hotspot_pressed)
+		_assembly_hotspot.set("active", false)
+
+	_connect_piece_hotspots()
+	_build_carried_heart()
+	_build_minigame()
+	_build_finale_overlay()
+	_build_finale_chain()
+	_prepare_finale_scene_state()
+	_update_boy_feedback()
+
+
+func notify_piece_collected(piece_id: String, piece_node: Node2D) -> void:
+	if piece_id == "" or _collected_piece_ids.has(piece_id):
+		return
+
+	_collected_piece_ids[piece_id] = true
+	_pieces_collected = _collected_piece_ids.size()
+
+	if piece_node != null:
+		piece_node.visible = false
+		piece_node.process_mode = Node.PROCESS_MODE_DISABLED
+
+		var hotspot: Node = piece_node.get_node_or_null("Hotspot")
+		if hotspot != null:
+			hotspot.set("active", false)
+
+	_update_boy_feedback()
+
+	if _pieces_collected >= TOTAL_HEART_PIECES:
+		_unlock_assembly_area()
+		_show_carried_heart()
+
+
+func are_all_pieces_collected() -> bool:
+	return _pieces_collected >= TOTAL_HEART_PIECES
+
+
+func get_pieces_collected() -> int:
+	return _pieces_collected
+
+
+func _connect_piece_hotspots() -> void:
+	if _heart_pieces_root == null:
+		return
+
+	for piece: Node in _heart_pieces_root.get_children():
+		var piece_node: Node2D = piece as Node2D
+		if piece_node == null:
+			continue
+
+		var hotspot: Area2D = piece_node.get_node_or_null("Hotspot") as Area2D
+		if hotspot == null:
+			continue
+
+		var callback: Callable = Callable(self, "_on_piece_hotspot_pressed").bind(piece_node)
+		if not hotspot.pressed.is_connected(callback):
+			hotspot.pressed.connect(callback)
+
+
+func _on_piece_hotspot_pressed(hotspot_id: String, piece_node: Node2D) -> void:
+	if hotspot_id == "" or piece_node == null:
+		return
+	if _minigame_opened or _awaiting_assembly_arrival or _pending_piece_id != "":
+		return
+	if _collected_piece_ids.has(hotspot_id) or _protagonist == null:
+		return
+
+	_pending_piece_id = hotspot_id
+	_pending_piece_node = piece_node
+	_pending_piece_target = piece_node.global_position
+
+	_protagonist.set_manual_input_enabled(false)
+	_protagonist.consume_next_press()
+	_protagonist.move_to_global_position(_pending_piece_target)
+
+
+func _on_assembly_hotspot_pressed(_hotspot_id: String) -> void:
+	if not are_all_pieces_collected() or _awaiting_assembly_arrival or _minigame_opened:
+		return
+	if _protagonist == null or _assembly_area == null:
+		return
+
+	_awaiting_assembly_arrival = true
+	_protagonist.set_manual_input_enabled(false)
+	_protagonist.consume_next_press()
+	_protagonist.move_to_global_position(_assembly_area.global_position)
+
+
+func _on_protagonist_destination_reached(destination: Vector2) -> void:
+	if _pending_piece_id != "":
+		if destination.distance_to(_pending_piece_target) <= ARRIVAL_TOLERANCE:
+			notify_piece_collected(_pending_piece_id, _pending_piece_node)
+			_pending_piece_id = ""
+			_pending_piece_node = null
+			_pending_piece_target = Vector2.ZERO
+
+			if not _minigame_opened:
+				_protagonist.set_manual_input_enabled(true)
+		return
+
+	if _awaiting_assembly_arrival and _assembly_area != null:
+		if destination.distance_to(_assembly_area.global_position) <= ARRIVAL_TOLERANCE:
+			_awaiting_assembly_arrival = false
+			_hide_carried_heart()
+			_open_minigame()
+
+
+func _unlock_assembly_area() -> void:
+	if _assembly_unlocked:
+		return
+
+	_assembly_unlocked = true
+
+	if _assembly_hotspot != null:
+		_assembly_hotspot.set("active", true)
+
+	if _assembly_area != null:
+		var tween: Tween = create_tween()
+		tween.set_loops(4)
+		tween.tween_property(_assembly_area, "scale", Vector2(1.08, 1.08), 0.18)
+		tween.tween_property(_assembly_area, "scale", Vector2.ONE, 0.18)
+
+
+func _build_carried_heart() -> void:
+	if _protagonist == null or _carried_heart != null:
+		return
+
+	_carried_heart = Node2D.new()
+	_carried_heart.name = "CarriedHeart"
+	_carried_heart.position = Vector2(0, -58)
+	_carried_heart.visible = false
+
+	var heart: Polygon2D = Polygon2D.new()
+	heart.polygon = _build_heart_silhouette()
+	heart.scale = Vector2(0.11, 0.11)
+	heart.color = Color(0.98, 0.54, 0.72, 0.95)
+
+	_carried_heart.add_child(heart)
+	_protagonist.add_child(_carried_heart)
+
+
+func _show_carried_heart() -> void:
+	if _carried_heart != null:
+		_carried_heart.visible = true
+
+
+func _hide_carried_heart() -> void:
+	if _carried_heart != null:
+		_carried_heart.visible = false
+
+
+func _build_minigame() -> void:
+	if _assembly_minigame != null:
+		return
+
+	_assembly_minigame = HEART_ASSEMBLY_MINIGAME_SCRIPT.new() as CanvasLayer
+	_assembly_minigame.name = "HeartAssemblyMinigame"
+	add_child(_assembly_minigame)
+
+	_assembly_minigame.call(
+		"setup",
+		HEART_CENTER,
+		BOARD_SCALE,
+		_build_piece_polygons(),
+		MINIGAME_POSITIONS,
+		PIECE_COLORS
+	)
+
+	if not _assembly_minigame.is_connected("piece_placed", _on_minigame_piece_placed):
+		_assembly_minigame.connect("piece_placed", _on_minigame_piece_placed)
+
+	if not _assembly_minigame.is_connected("assembly_completed", _on_minigame_completed):
+		_assembly_minigame.connect("assembly_completed", _on_minigame_completed)
+
+
+func _open_minigame() -> void:
+	if _minigame_opened or _assembly_minigame == null:
+		return
+
+	_minigame_opened = true
+	_assembly_minigame.call("open")
+
+	if _protagonist != null:
+		_protagonist.set_manual_input_enabled(false)
+
+
+func _on_minigame_piece_placed(piece_id: String, _zone_id: String) -> void:
+	if piece_id == "" or _assembled_piece_ids.has(piece_id):
+		return
+
+	_assembled_piece_ids[piece_id] = true
+	_assembled_pieces = _assembled_piece_ids.size()
+	_update_boy_feedback()
+
+
+func _on_minigame_completed() -> void:
+	if _assembly_completed:
+		return
+
+	_assembly_completed = true
+	_update_boy_feedback()
+	_trigger_finale()
+
+
+func _trigger_finale() -> void:
+	if _finale_triggered:
+		return
+	if _finale_chain == null:
+		return
+
+	_finale_triggered = true
+	_minigame_opened = false
+
+	if _assembly_minigame != null:
+		_assembly_minigame.call("close")
+
+	if _protagonist != null:
+		_protagonist.set_manual_input_enabled(false)
+
+	_finale_chain.clear()
+	_finale_chain.add_step(Callable(self, "_step_boy_stops_crying"), 0.35)
+	_finale_chain.add_step(Callable(self, "_step_fade_out_corrupted_scene"), FINALE_FADE_OUT_DURATION)
+	_finale_chain.add_step(Callable(self, "_step_switch_bgm_to_finale"), 0.2)
+	_finale_chain.add_step(Callable(self, "_step_fade_in_peaceful_scene"), FINALE_FADE_IN_DURATION)
+	_finale_chain.add_step(Callable(self, "_step_spawn_finale_characters"), FINALE_SPAWN_DURATION)
+	_finale_chain.add_step(Callable(self, "_step_photo_pose"), FINALE_PHOTO_POSE_DURATION)
+	_finale_chain.add_step(Callable(self, "_step_flash_white"), (FINALE_FLASH_DURATION * 2.0) + 0.05)
+	_finale_chain.add_step(Callable(self, "_step_hold_final_frame"), FINALE_FREEZE_DURATION)
+	_finale_chain.add_step(Callable(self, "_step_transition_to_final_screen"), 0.0)
+	_finale_chain.play()
+
+
+func _build_finale_overlay() -> void:
+	if _finale_overlay_layer != null:
+		return
+
+	_finale_overlay_layer = CanvasLayer.new()
+	_finale_overlay_layer.name = "FinaleOverlay"
+	_finale_overlay_layer.layer = 20
+	add_child(_finale_overlay_layer)
+
+	_finale_fade_rect = ColorRect.new()
+	_finale_fade_rect.name = "FadeRect"
+	_finale_fade_rect.color = Color(0.0, 0.0, 0.0, 0.0)
+	_finale_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_finale_fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_finale_fade_rect.offset_left = 0.0
+	_finale_fade_rect.offset_top = 0.0
+	_finale_fade_rect.offset_right = 0.0
+	_finale_fade_rect.offset_bottom = 0.0
+	_finale_overlay_layer.add_child(_finale_fade_rect)
+
+	_finale_flash_rect = ColorRect.new()
+	_finale_flash_rect.name = "FlashRect"
+	_finale_flash_rect.color = Color(1.0, 1.0, 1.0, 0.0)
+	_finale_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_finale_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_finale_flash_rect.offset_left = 0.0
+	_finale_flash_rect.offset_top = 0.0
+	_finale_flash_rect.offset_right = 0.0
+	_finale_flash_rect.offset_bottom = 0.0
+	_finale_overlay_layer.add_child(_finale_flash_rect)
+
+
+func _build_finale_chain() -> void:
+	if _finale_chain != null:
+		return
+
+	_finale_chain = EVENT_CHAIN_SCRIPT.new() as EventChain
+	_finale_chain.name = "FinaleEventChain"
+	add_child(_finale_chain)
+
+
+func _prepare_finale_scene_state() -> void:
+	if _background_after != null:
+		_background_after.visible = false
+		_background_after.modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+	if _doll != null:
+		_doll.visible = false
+		_doll.position = FINALE_DOLL_POSITION + Vector2(0.0, FINALE_SPAWN_OFFSET_Y)
+		_doll.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_doll.scale = Vector2.ONE
+
+	if _boneca != null:
+		_boneca.visible = false
+		_boneca.play("default")
+
+
+func _step_boy_stops_crying() -> void:
+	if _henri == null:
+		return
+
+	_henri.sprite_frames = _build_sheet_sprite_frames(HENRI_IDLE_TEXTURE, HENRI_IDLE_COLUMNS, HENRI_IDLE_ROWS, &"idle", 9.0)
+	_henri.play("idle")
+	_henri.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_henri.speed_scale = 1.0
+
+
+func _step_fade_out_corrupted_scene() -> void:
+	if _finale_fade_rect == null:
+		return
+
+	var tween: Tween = create_tween()
+	tween.tween_property(_finale_fade_rect, "color", Color(0.0, 0.0, 0.0, 1.0), FINALE_FADE_OUT_DURATION)
+
+
+func _step_switch_bgm_to_finale() -> void:
+	var audio_manager: Node = get_node_or_null("/root/AudioManager")
+	if audio_manager == null:
+		push_warning("Room4 finale: AudioManager nao encontrado.")
+		return
+	if not audio_manager.has_method("play_bgm"):
+		push_warning("Room4 finale: AudioManager sem metodo play_bgm.")
+		return
+
+	audio_manager.call("play_bgm", "finale")
+
+
+func _step_fade_in_peaceful_scene() -> void:
+	if _background_before != null:
+		_background_before.visible = false
+
+	if _heart_pieces_root != null:
+		_heart_pieces_root.visible = false
+
+	if _assembly_area != null:
+		_assembly_area.visible = false
+
+	if _background_after != null:
+		_background_after.visible = true
+		_background_after.modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+	if _finale_fade_rect != null:
+		var tween: Tween = create_tween()
+		tween.tween_property(_finale_fade_rect, "color", Color(0.0, 0.0, 0.0, 0.0), FINALE_FADE_IN_DURATION)
+
+
+func _step_spawn_finale_characters() -> void:
+	if _crying_boy != null:
+		_crying_boy.position = FINALE_HENRI_POSITION + Vector2(0.0, FINALE_SPAWN_OFFSET_Y)
+		_crying_boy.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_crying_boy.scale = Vector2.ONE
+
+	if _doll != null:
+		_doll.visible = true
+		_doll.position = FINALE_DOLL_POSITION + Vector2(0.0, FINALE_SPAWN_OFFSET_Y)
+		_doll.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_doll.scale = Vector2.ONE
+
+	if _boneca != null:
+		_boneca.visible = true
+		_boneca.play("default")
+
+	var tween: Tween = create_tween()
+	tween.set_parallel(true)
+
+	if _crying_boy != null:
+		tween.tween_property(_crying_boy, "position", FINALE_HENRI_POSITION, FINALE_SPAWN_DURATION)
+		tween.tween_property(_crying_boy, "modulate", Color(1.0, 1.0, 1.0, 1.0), FINALE_SPAWN_DURATION)
+
+	if _doll != null:
+		tween.tween_property(_doll, "position", FINALE_DOLL_POSITION, FINALE_SPAWN_DURATION)
+		tween.tween_property(_doll, "modulate", Color(1.0, 1.0, 1.0, 1.0), FINALE_SPAWN_DURATION)
+
+
+func _step_photo_pose() -> void:
+	var tween: Tween = create_tween()
+	tween.set_parallel(true)
+
+	if _crying_boy != null:
+		tween.tween_property(_crying_boy, "scale", Vector2(1.04, 1.04), FINALE_PHOTO_POSE_DURATION)
+		tween.tween_property(_crying_boy, "position", FINALE_HENRI_POSITION + Vector2(-8.0, -6.0), FINALE_PHOTO_POSE_DURATION)
+
+	if _doll != null:
+		tween.tween_property(_doll, "scale", Vector2(1.04, 1.04), FINALE_PHOTO_POSE_DURATION)
+		tween.tween_property(_doll, "position", FINALE_DOLL_POSITION + Vector2(8.0, -6.0), FINALE_PHOTO_POSE_DURATION)
+
+
+func _step_flash_white() -> void:
+	if _finale_flash_rect == null:
+		return
+
+	_finale_flash_rect.color = Color(1.0, 1.0, 1.0, 0.0)
+
+	var tween: Tween = create_tween()
+	tween.tween_property(_finale_flash_rect, "color", Color(1.0, 1.0, 1.0, 1.0), FINALE_FLASH_DURATION)
+	tween.tween_property(_finale_flash_rect, "color", Color(1.0, 1.0, 1.0, 0.0), FINALE_FLASH_DURATION)
+
+
+func _step_hold_final_frame() -> void:
+	return
+
+
+func _step_transition_to_final_screen() -> void:
+	var game_manager: Node = get_node_or_null("/root/GameManager")
+	if game_manager == null:
+		push_warning("Room4 finale: GameManager nao encontrado.")
+		return
+	if not game_manager.has_method("complete_room"):
+		push_warning("Room4 finale: GameManager sem metodo complete_room.")
+		return
+
+	game_manager.call("complete_room", 4)
+
+
+func _build_piece_polygons() -> Array[PackedVector2Array]:
+	return [
+		PackedVector2Array([Vector2(-26, 0), Vector2(-12, -20), Vector2(0, -28), Vector2(12, -20), Vector2(26, 0), Vector2(0, 28)]),
+		PackedVector2Array([Vector2(-24, 0), Vector2(-10, -18), Vector2(0, -26), Vector2(10, -18), Vector2(24, 0), Vector2(0, 24)]),
+		PackedVector2Array([Vector2(-22, 0), Vector2(-10, -16), Vector2(0, -24), Vector2(10, -16), Vector2(22, 0), Vector2(0, 22)]),
+		PackedVector2Array([Vector2(-24, 0), Vector2(-11, -18), Vector2(0, -26), Vector2(11, -18), Vector2(24, 0), Vector2(0, 25)]),
+		PackedVector2Array([Vector2(-23, 0), Vector2(-10, -17), Vector2(0, -25), Vector2(10, -17), Vector2(23, 0), Vector2(0, 23)]),
+		PackedVector2Array([Vector2(-25, 0), Vector2(-12, -19), Vector2(0, -27), Vector2(12, -19), Vector2(25, 0), Vector2(0, 26)])
+	]
+
+
+func _build_heart_silhouette() -> PackedVector2Array:
+	var silhouette: PackedVector2Array = PackedVector2Array()
+
+	for angle_step: int in range(0, 360, 12):
+		var radians: float = deg_to_rad(float(angle_step))
+		var x: float = 16.0 * pow(sin(radians), 3.0)
+		var y: float = -(13.0 * cos(radians) - 5.0 * cos(2.0 * radians) - 2.0 * cos(3.0 * radians) - cos(4.0 * radians))
+		silhouette.append(Vector2(x, y) * 10.0)
+
+	return silhouette
+
+
+func _update_boy_feedback() -> void:
+	if _henri == null or _crying_boy == null:
+		return
+
+	if _finale_triggered:
+		return
+
+	var total_progress_steps: float = float(TOTAL_HEART_PIECES * 2)
+	var current_progress: float = float(_pieces_collected + _assembled_pieces)
+	var progress: float = clampf(current_progress / total_progress_steps, 0.0, 1.0)
+
+	_crying_boy.scale = Vector2.ONE.lerp(Vector2(1.1, 1.1), progress)
+	_henri.modulate = Color(1.0, 0.72 + (0.28 * progress), 0.72 + (0.18 * progress), 1.0)
+	_henri.speed_scale = 1.0 - (0.45 * progress)
+
+
+func _build_sheet_sprite_frames(
+	texture: Texture2D,
+	columns: int,
+	rows: int,
+	animation_name: StringName,
+	fps: float
+) -> SpriteFrames:
+	var frames: SpriteFrames = SpriteFrames.new()
+	frames.add_animation(animation_name)
+	frames.set_animation_speed(animation_name, fps)
+	frames.set_animation_loop(animation_name, true)
+
+	for row: int in range(rows):
+		for column: int in range(columns):
+			var frame_texture: AtlasTexture = AtlasTexture.new()
+			frame_texture.atlas = texture
+			frame_texture.region = Rect2(
+				float(column) * HENRI_FRAME_SIZE.x,
+				float(row) * HENRI_FRAME_SIZE.y,
+				HENRI_FRAME_SIZE.x,
+				HENRI_FRAME_SIZE.y
+			)
+			frames.add_frame(animation_name, frame_texture)
+
+	return frames
 </file>
 
 <file path="scripts/rooms/room_1_controller.gd">
@@ -11328,8 +11591,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Diretorio:** /scripts/rooms/room_4/ e /scenes/ui/
 - **Micro-Tasks:**
   - [ ] MT-5.4.1: Implementar `_trigger_finale()` no room_4_controller usando EventChain: (1) garoto para de chorar (sprite muda), (2) fade out cenário escuro, (3) `AudioManager.play_bgm("finale")` (crossfade para Goo Goo Dolls), (4) fade in cenário do passeio, (5) spawnar os dois personagens, (6) animação de "tirar foto" (Tween sutil), (7) flash branco (ColorRect alpha 0→1→0 rápido), (8) freeze 1.5s, (9) transição para tela final
-  - [ ] MT-5.4.2: Criar `final_screen.tscn`: CanvasLayer com background preto, `TextureRect` centralizada para a imagem/foto final (fade in lento, 2s). Música continua. Texto de dedicatória opcional (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo — tap anywhere após 5s faz fade to black e volta ao início ou fecha
-  - [ ] MT-5.4.3: Implementar script `final_screen.gd`: lógica mínima — fade in da imagem, detectar tap para encerrar (com guard de 5s para não encerrar acidentalmente)
+  - [ ] MT-5.4.2: Tocar GooGoooDools, Imagem/foto final (fade in lento, 2s). Música continua. Texto cômico no final: Vale pizza / fundo preto (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo - após 5s faz fade to black)
 - **Criterios de Aceitacao:**
   1. Crossfade musical sincronizado
   2. "Flash da foto" é satisfatório

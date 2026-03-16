@@ -428,8 +428,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Diretorio:** /scripts/rooms/room_4/ e /scenes/ui/
 - **Micro-Tasks:**
   - [ ] MT-5.4.1: Implementar `_trigger_finale()` no room_4_controller usando EventChain: (1) garoto para de chorar (sprite muda), (2) fade out cenário escuro, (3) `AudioManager.play_bgm("finale")` (crossfade para Goo Goo Dolls), (4) fade in cenário do passeio, (5) spawnar os dois personagens, (6) animação de "tirar foto" (Tween sutil), (7) flash branco (ColorRect alpha 0→1→0 rápido), (8) freeze 1.5s, (9) transição para tela final
-  - [ ] MT-5.4.2: Criar `final_screen.tscn`: CanvasLayer com background preto, `TextureRect` centralizada para a imagem/foto final (fade in lento, 2s). Música continua. Texto de dedicatória opcional (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo — tap anywhere após 5s faz fade to black e volta ao início ou fecha
-  - [ ] MT-5.4.3: Implementar script `final_screen.gd`: lógica mínima — fade in da imagem, detectar tap para encerrar (com guard de 5s para não encerrar acidentalmente)
+  - [ ] MT-5.4.2: Tocar GooGoooDools, Imagem/foto final (fade in lento, 2s). Música continua. Texto cômico no final: Vale pizza / fundo preto (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo - após 5s faz fade to black)
 - **Criterios de Aceitacao:**
   1. Crossfade musical sincronizado
   2. "Flash da foto" é satisfatório
@@ -438,57 +437,18 @@ Cada fase tem checkpoint que impede avançar sem validação.
   5. Jogo tem encerramento digno
 - **Classificacao:** Confirmado
 
+#### Tarefa 5.5: Polimento
+- **Descricao:** Obedeça às orientações do usuário até o jogo estar completamente polido
+- **Micro-Tasks:**
+  - [ ] MT-5.5.1: Obedeça o usuário
+- **Criterios de Aceitacao:**
+  1. Jogo Completo
+- **Classificacao:** Confirmado
+
 **Checkpoint FASE 5:** Todas as salas periféricas jogáveis. A sequência hub → 1 → hub → 2 → hub → 3 → hub → final funciona, com a protagonista como agente de movimento, colisão, coleta e abertura das ações finais.
 
 ---
 
-### FASE 6: Fluxo Completo, Polimento e Android
-**Objetivo:** Integrar tudo, polir a leitura do hub e exportar para Android
-**Subsistemas cobertos:** Hub, fluxo, UX, export
-
-#### Tarefa 6.1: Polimento da Sala Principal
-- **Descricao:** Refinar feedback visual e clareza de progressão da sala central
-- **Diretorio:** /scenes/ui/ e /scripts/rooms/
-- **Micro-Tasks:**
-  - [ ] MT-6.1.1: Ajustar intensidade, cor e direção das partículas de névoa nas portas bloqueadas
-  - [ ] MT-6.1.2: Garantir leitura clara dos três estados de porta: disponível, bloqueada, concluída/passada
-  - [ ] MT-6.1.3: Ajustar transições visuais entre retorno ao hub e abertura da próxima porta
-- **Criterios de Aceitacao:**
-  1. O jogador entende imediatamente qual é a próxima porta
-  2. Portas bloqueadas parecem inacessíveis
-  3. Portas concluídas não geram ambiguidade
-- **Classificacao:** Confirmado
-
-#### Tarefa 6.2: Playtest de Fluxo Completo
-- **Descricao:** sala principal -> Sala 1 -> sala principal -> Sala 2 -> sala principal -> Sala 3 -> sala principal -> Sala Final -> tela final sem bugs, validando sempre o gating por aproximação da protagonista
-- **Diretorio:** N/A (processo)
-- **Micro-Tasks:**
-  - [ ] MT-6.2.1: Testar fluxo completo no editor (mouse). Anotar bugs
-  - [ ] MT-6.2.2: Corrigir bugs encontrados
-  - [ ] MT-6.2.3: Ajustar timings de animações e delays baseado no feel
-  - [ ] MT-6.2.4: Verificar que nenhum estado morto existe (sempre há caminho para frente)
-- **Criterios de Aceitacao:**
-  1. Zero crashes
-  2. Zero dead-ends
-  3. Fluxo emocional coerente
-- **Classificacao:** Confirmado
-
-#### Tarefa 6.3: Export Android
-- **Descricao:** Configurar e gerar APK funcional
-- **Diretorio:** /
-- **Micro-Tasks:**
-  - [ ] MT-6.3.1: Instalar export templates Android. Configurar keystore de debug. Criar preset de export com orientação portrait-only
-  - [ ] MT-6.3.2: Gerar APK de debug
-  - [ ] MT-6.3.3: Instalar em device real. Testar: touch responsivo em todos componentes e fluxos da protagonista (clique-to-move, hotspot, drag, sweep, tap rápido, portas do hub), aspect ratio, áudio, performance
-  - [ ] MT-6.3.4: Ajustes finais baseados no teste em device (tamanhos de hitbox, velocidade de drag, densidade da névoa, etc)
-- **Criterios de Aceitacao:**
-  1. APK instala e roda
-  2. Touch funciona em todas mecânicas
-  3. Sem frame drops perceptíveis
-  4. Áudio não corta
-- **Classificacao:** Confirmado
-
-**Checkpoint FASE 6:** Jogo completo e jogável em Android. Pronto para presentear.
 
 ---
 
