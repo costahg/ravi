@@ -1,0 +1,15 @@
+diff --git a/project.godot b/project.godot
+--- a/project.godot
++++ b/project.godot
+@@ -16,6 +16,10 @@ AudioManager="*res://scripts/core/audio_manager.gd"
+ [display]
+ 
+ window/size/viewport_width=540
+ window/size/viewport_height=960
+ window/stretch/mode="canvas_items"
+ window/stretch/aspect="keep_width"
+ window/handheld/orientation=1
++
++[rendering]
++
++environment/defaults/default_clear_color=Color(0, 0, 0, 1)
