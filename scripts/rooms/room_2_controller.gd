@@ -4,6 +4,7 @@ signal task_enabled(task_id: String)
 
 const DISH_CLEAN_RATE: float = 1.0
 const SWEEP_CLEAN_RATE: float = 1.0
+const CLOTHES_REQUIRED_DELIVERIES: int = 3
 const ROOM2_FINAL_LOOP_TEXTURE_PATH: String = "res://assets/sprites/Room2Loop1024x1536_11C2L_S01.png"
 const ROOM2_FINAL_LOOP_COLUMNS: int = 11
 const ROOM2_FINAL_LOOP_ROWS: int = 2
@@ -562,6 +563,10 @@ func _on_cloth_dropped_on_target(drag_id: String, target_area: Area2D) -> void:
 	if _clothes_delivered_ids.get(drag_id, false):
 		return
 
+	if drag_id.is_empty():
+		push_warning("Room2Controller recebeu drop de roupa sem drag_id valido.")
+		return
+
 	var cloth: Area2D = _get_cloth_by_drag_id(drag_id)
 	if cloth == null:
 		push_warning("Room2Controller nao encontrou a roupa '%s' para concluir o drop." % drag_id)
@@ -570,7 +575,7 @@ func _on_cloth_dropped_on_target(drag_id: String, target_area: Area2D) -> void:
 	_clothes_delivered_ids[drag_id] = true
 	_set_cloth_enabled_state(cloth, false)
 
-	if _clothes_delivered_ids.size() >= 3:
+	if _clothes_delivered_ids.size() >= CLOTHES_REQUIRED_DELIVERIES:
 		complete_task("clothes")
 
 

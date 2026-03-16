@@ -361,6 +361,16 @@ sprite_frames = SubResource("SpriteFrames_xwnce")
 animation = &"loop"
 frame_progress = 0.20539528
 
+[node name="TimerLabel" type="Label" parent="CanvasLayer/Doctor"]
+offset_left = -96.0
+offset_top = -188.0
+offset_right = 96.0
+offset_bottom = -104.0
+grow_horizontal = 2
+text = "15.0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="Protagonist" parent="CanvasLayer" instance=ExtResource("2_protagonist")]
 z_index = 2
 script = ExtResource("3_player_dodge")

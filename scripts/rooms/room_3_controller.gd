@@ -11,6 +11,7 @@ const HIT_FLASH_DURATION: float = 0.08
 const HIT_RECOVER_DURATION: float = 0.18
 const HIT_INVULNERABILITY_DURATION: float = 0.5
 const PROJECTILE_FADE_DURATION: float = 0.25
+const SURVIVAL_TIMER_TEXT_PREFIX: String = ""
 
 @export var survival_duration: float = 15.0
 
@@ -18,6 +19,7 @@ const PROJECTILE_FADE_DURATION: float = 0.25
 @onready var _protagonist: Node2D = $CanvasLayer/Protagonist
 @onready var _survival_timer: Timer = $CanvasLayer/SurvivalTimer
 @onready var _bullet_spawner: Node = get_node_or_null("CanvasLayer/BulletSpawner") as Node
+@onready var _doctor_timer_label: Label = get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
 
 var _default_protagonist_modulate: Color = Color.WHITE
 var _hit_flash_tween: Tween
@@ -30,7 +32,12 @@ func _ready() -> void:
 	_configure_hospital_background()
 	_configure_survival_timer()
 	_connect_survival_phase()
+	_configure_doctor_timer_label()
 	_start_bullet_spawner()
+
+
+func _process(_delta: float) -> void:
+	_update_doctor_timer_label()
 
 
 func _configure_hospital_background() -> void:
@@ -97,6 +104,34 @@ func _stop_bullet_spawner() -> void:
 
 	if _bullet_spawner.has_method("stop_spawning"):
 		_bullet_spawner.call("stop_spawning")
+
+
+func _configure_doctor_timer_label() -> void:
+	if _doctor_timer_label == null:
+		push_warning("Room3Controller nao encontrou CanvasLayer/Doctor/TimerLabel.")
+		return
+
+	_doctor_timer_label.add_theme_font_size_override("font_size", 56)
+	_doctor_timer_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.9, 1.0))
+	_doctor_timer_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
+	_doctor_timer_label.add_theme_constant_override("outline_size", 10)
+	_doctor_timer_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.8))
+	_doctor_timer_label.add_theme_constant_override("shadow_outline_size", 6)
+	_doctor_timer_label.add_theme_constant_override("shadow_offset_x", 0)
+	_doctor_timer_label.add_theme_constant_override("shadow_offset_y", 4)
+	_update_doctor_timer_label()
+
+
+func _update_doctor_timer_label() -> void:
+	if _doctor_timer_label == null or _survival_timer == null:
+		return
+
+	if _survival_phase_finished:
+		_doctor_timer_label.text = "0.0"
+		return
+
+	var seconds_left: float = maxf(_survival_timer.time_left, 0.0)
+	_doctor_timer_label.text = "%s%.1f" % [SURVIVAL_TIMER_TEXT_PREFIX, seconds_left]
 
 
 func _on_protagonist_hit() -> void:
