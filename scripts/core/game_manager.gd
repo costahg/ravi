@@ -46,6 +46,7 @@ func _ready() -> void:
 	_fade_layer.add_child(_fade_rect)
 
 	_preload_available_scenes()
+	call_deferred("_sync_bgm_with_active_scene")
 
 
 func transition_to_room(room_id: int) -> void:
@@ -146,6 +147,8 @@ func _transition_to_scene_path(scene_path: String, next_room_id: int, update_cur
 	if update_current_room:
 		current_room = next_room_id
 
+	_sync_bgm_for_scene_path(scene_path)
+
 	var fade_in_tween: Tween = create_tween()
 	fade_in_tween.tween_property(_fade_rect, "color", Color(0.0, 0.0, 0.0, 0.0), TRANSITION_FADE_DURATION)
 	await fade_in_tween.finished
@@ -188,3 +191,49 @@ func _get_or_load_scene(scene_path: String) -> PackedScene:
 
 	_scene_cache[scene_path] = packed_scene
 	return packed_scene
+
+
+func _sync_bgm_with_active_scene() -> void:
+	var active_scene: Node = get_tree().current_scene
+	if active_scene == null:
+		return
+
+	_sync_bgm_for_scene_path(active_scene.scene_file_path)
+
+
+func _sync_bgm_for_scene_path(scene_path: String) -> void:
+	var audio_manager: Node = get_node_or_null("/root/AudioManager")
+	if audio_manager == null or not audio_manager.has_method("play_bgm"):
+		return
+
+	var track_key: String = _get_bgm_track_key_for_scene_path(scene_path)
+	if track_key.is_empty():
+		return
+
+	audio_manager.call("play_bgm", track_key)
+
+
+func _get_bgm_track_key_for_scene_path(scene_path: String) -> String:
+	if scene_path == MAIN_MENU_SCENE_PATH:
+		return "hub_room_1"
+
+	if scene_path == FINAL_SCENE_PATH:
+		return "finale"
+
+	for room_id_variant in ROOM_SCENES.keys():
+		var room_id: int = int(room_id_variant)
+		var room_scene_path: String = String(ROOM_SCENES[room_id])
+		if scene_path != room_scene_path:
+			continue
+
+		match room_id:
+			1:
+				return "room_1"
+			2:
+				return "room_2"
+			3:
+				return "room_3"
+			4:
+				return "finale"
+
+	return ""
