@@ -1,0 +1,21 @@
+Room 3 - Sobreviva
+Doctor-1256x256_7C3L_S01.png: Personagem Boss da Sala sobreviva fica parado
+Hospital-11024x1536_6C4L.png: Background do sobrevivencia inicial (AnimatedSprite Fullrect)
+Seringa.png: Ataque do Medico
+RaviRoom-11024x1536_6C4L.png: Background do sobrevivencia apos vencer (AnimatedSprite Fullrect Fade in)
+KayInteract-1256x256_4C4L.png: Ao interagir com o bebe ravi
+love.png: Ao interagir com o bebe ravi popup sobre a cabeça dele
+RaviFunny-1256x256_7C7L.png e RaviWalking-1256x256_8C6L.png: Ravi tem ia de ficar andando pela sala e parando, ai funny é quando ta idle, e walking é andando.
+
+Room 4 - Final
+CorrupetedRoom-11024x1536_6C4L.png: AnimatedSprite ( Background Antes de coletar os pedaços do coração) Fullrect)
+HenriSad-1256x256_7C3L.png: Looping do garoto do centro do CorrupetedRoom
+Room4EndBackground.png: ( Background Depos de coletar os pedaços do coração Fullrect)
+BonecaLoop256x256_7C5L.png: Personagem que fica no centro (interage com ela pra liberar a cutscene do final
+HenriIdle-1256x256_6C6L_S01.png: Antes de interagir com a boneca
+HenriInteract-1256x256_6C5L.png: Ao interagir com a boneca e toca a custcene
+KayInteract-1256x256_4C4L.png: Ao interagir com a boneca e toca a custcene
+EndImage.png: Imagem de Encerramento
+
+Todas as salas:
+key.png (execto a ultima): Voltar para o hub.

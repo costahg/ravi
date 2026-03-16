@@ -34,7 +34,7 @@ const NURSERY_BGM_TARGET_VOLUME_DB: float = -8.0
 @onready var _survival_timer: Timer = $CanvasLayer/SurvivalTimer
 @onready var _bullet_spawner: Node = get_node_or_null("CanvasLayer/BulletSpawner") as Node
 @onready var _doctor: AnimatedSprite2D = get_node_or_null("CanvasLayer/Doctor") as AnimatedSprite2D
-@onready var _doctor_timer_label: Label = get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
+@onready var _doctor_timer_label: Label = _resolve_doctor_timer_label()
 
 var _default_protagonist_modulate: Color = Color.WHITE
 var _hit_flash_tween: Tween
@@ -117,6 +117,14 @@ func _start_bullet_spawner() -> void:
 		_bullet_spawner.call("start_spawning")
 
 
+func _resolve_doctor_timer_label() -> Label:
+	var canvas_label: Label = get_node_or_null("CanvasLayer/TimerLabel") as Label
+	if canvas_label != null:
+		return canvas_label
+
+	return get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
+
+
 func _stop_bullet_spawner() -> void:
 	if _bullet_spawner == null:
 		return
@@ -127,9 +135,11 @@ func _stop_bullet_spawner() -> void:
 
 func _configure_doctor_timer_label() -> void:
 	if _doctor_timer_label == null:
-		push_warning("Room3Controller nao encontrou CanvasLayer/Doctor/TimerLabel.")
+		push_warning("Room3Controller nao encontrou o contador visivel do Doctor.")
 		return
 
+	_doctor_timer_label.visible = true
+	_doctor_timer_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	_doctor_timer_label.add_theme_font_size_override("font_size", 64)
 	_doctor_timer_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.9, 1.0))
 	_doctor_timer_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
@@ -146,10 +156,12 @@ func _update_doctor_timer_label() -> void:
 		return
 
 	if _survival_phase_finished:
-		_doctor_timer_label.text = "0.0"
+		_doctor_timer_label.visible = false
+		_doctor_timer_label.text = ""
 		return
 
 	var seconds_left: float = maxf(_survival_timer.time_left, 0.0)
+	_doctor_timer_label.visible = true
 	_doctor_timer_label.text = "%.1f" % seconds_left
 
 

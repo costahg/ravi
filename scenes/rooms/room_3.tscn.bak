@@ -383,6 +383,6 @@ offset_left = 258.0
 offset_top = 177.0
 offset_right = 578.0
 offset_bottom = 277.0
-text = ""
+text = "TEMPO: 15.0s"
 horizontal_alignment = 1
 vertical_alignment = 1
