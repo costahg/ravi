@@ -90,6 +90,560 @@ project.md
 <files>
 This section contains the contents of the repository's files.
 
+<file path="scenes/components/projectile.tscn">
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/rooms/room_3/projectile.gd" id="1_projectile"]
+[ext_resource type="Texture2D" path="res://assets/sprites/Seringa.png" id="2_seringa"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_projectile"]
+radius = 24.0
+
+[node name="Projectile" type="Area2D" groups=["projectile"]]
+script = ExtResource("1_projectile")
+monitoring = true
+monitorable = true
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = ExtResource("2_seringa")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_projectile")
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="."]
+rect = Rect2(-32, -32, 64, 64)
+
+[node name="LifetimeTimer" type="Timer" parent="."]
+wait_time = 5.0
+one_shot = true
+</file>
+
+<file path="scenes/components/protagonist.tscn">
+[gd_scene load_steps=75 format=3 uid="uid://bto3gsqr453yv"]
+
+[ext_resource type="Script" uid="uid://bfjxusln2e1fq" path="res://scripts/components/protagonist_actor.gd" id="1_actor"]
+[ext_resource type="Texture2D" uid="uid://bryfl2772redj" path="res://assets/sprites/KayIdle-1256x256_6C4L.png" id="1_idle"]
+[ext_resource type="Texture2D" uid="uid://dq0je40gwj218" path="res://assets/sprites/KayWalking-1256x256_7C4L.png" id="2_walk"]
+[ext_resource type="Texture2D" uid="uid://46euo4a3t4cu" path="res://assets/sprites/KayInteract-1256x256_4C4L.png" id="3_interact"]
+[ext_resource type="Texture2D" uid="uid://dx4srjjx7xifw" path="res://assets/sprites/GardenObjects.png" id="5_ile2d"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_eqvij"]
+atlas = ExtResource("1_idle")
+region = Rect2(0, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wui42"]
+atlas = ExtResource("1_idle")
+region = Rect2(256, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ile2d"]
+atlas = ExtResource("1_idle")
+region = Rect2(512, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0i8ai"]
+atlas = ExtResource("1_idle")
+region = Rect2(768, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xsxnc"]
+atlas = ExtResource("1_idle")
+region = Rect2(1024, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_58fig"]
+atlas = ExtResource("1_idle")
+region = Rect2(1280, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v73cg"]
+atlas = ExtResource("1_idle")
+region = Rect2(0, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_y3l1k"]
+atlas = ExtResource("1_idle")
+region = Rect2(256, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_o64so"]
+atlas = ExtResource("1_idle")
+region = Rect2(512, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yjpqe"]
+atlas = ExtResource("1_idle")
+region = Rect2(768, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dmkbm"]
+atlas = ExtResource("1_idle")
+region = Rect2(1024, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_m10bu"]
+atlas = ExtResource("1_idle")
+region = Rect2(1280, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_e8nby"]
+atlas = ExtResource("1_idle")
+region = Rect2(0, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7veol"]
+atlas = ExtResource("1_idle")
+region = Rect2(256, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hdolo"]
+atlas = ExtResource("1_idle")
+region = Rect2(512, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7pmmb"]
+atlas = ExtResource("1_idle")
+region = Rect2(768, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7kikq"]
+atlas = ExtResource("1_idle")
+region = Rect2(1024, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7eaao"]
+atlas = ExtResource("1_idle")
+region = Rect2(1280, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_52xit"]
+atlas = ExtResource("1_idle")
+region = Rect2(0, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j5aa8"]
+atlas = ExtResource("1_idle")
+region = Rect2(256, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_41wrc"]
+atlas = ExtResource("1_idle")
+region = Rect2(512, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v4jir"]
+atlas = ExtResource("1_idle")
+region = Rect2(768, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xw5es"]
+atlas = ExtResource("1_idle")
+region = Rect2(1024, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sk4fu"]
+atlas = ExtResource("1_idle")
+region = Rect2(1280, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v2ies"]
+atlas = ExtResource("3_interact")
+region = Rect2(0, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tswym"]
+atlas = ExtResource("3_interact")
+region = Rect2(256, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_e5m6q"]
+atlas = ExtResource("3_interact")
+region = Rect2(512, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g0f7v"]
+atlas = ExtResource("3_interact")
+region = Rect2(768, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xjisr"]
+atlas = ExtResource("3_interact")
+region = Rect2(0, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p5bry"]
+atlas = ExtResource("3_interact")
+region = Rect2(256, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rgpvl"]
+atlas = ExtResource("3_interact")
+region = Rect2(512, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hemcx"]
+atlas = ExtResource("3_interact")
+region = Rect2(768, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_50f80"]
+atlas = ExtResource("3_interact")
+region = Rect2(0, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rradr"]
+atlas = ExtResource("3_interact")
+region = Rect2(256, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8n6ev"]
+atlas = ExtResource("3_interact")
+region = Rect2(512, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ky17c"]
+atlas = ExtResource("3_interact")
+region = Rect2(768, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bvarn"]
+atlas = ExtResource("3_interact")
+region = Rect2(0, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8pnd5"]
+atlas = ExtResource("3_interact")
+region = Rect2(256, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qgdkx"]
+atlas = ExtResource("3_interact")
+region = Rect2(512, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nnnte"]
+atlas = ExtResource("3_interact")
+region = Rect2(768, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kb7qj"]
+atlas = ExtResource("2_walk")
+region = Rect2(0, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_aagpn"]
+atlas = ExtResource("2_walk")
+region = Rect2(256, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_22guf"]
+atlas = ExtResource("2_walk")
+region = Rect2(512, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g47e3"]
+atlas = ExtResource("2_walk")
+region = Rect2(768, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_cur56"]
+atlas = ExtResource("2_walk")
+region = Rect2(1024, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_edsm5"]
+atlas = ExtResource("2_walk")
+region = Rect2(1280, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f5kay"]
+atlas = ExtResource("2_walk")
+region = Rect2(1536, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ijwiv"]
+atlas = ExtResource("2_walk")
+region = Rect2(0, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ifcr8"]
+atlas = ExtResource("2_walk")
+region = Rect2(256, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mgbuo"]
+atlas = ExtResource("2_walk")
+region = Rect2(512, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wbeew"]
+atlas = ExtResource("2_walk")
+region = Rect2(768, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8xle5"]
+atlas = ExtResource("2_walk")
+region = Rect2(1024, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_y6tbf"]
+atlas = ExtResource("2_walk")
+region = Rect2(1280, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r6crj"]
+atlas = ExtResource("2_walk")
+region = Rect2(1536, 256, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pgw7n"]
+atlas = ExtResource("2_walk")
+region = Rect2(0, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d2q51"]
+atlas = ExtResource("2_walk")
+region = Rect2(256, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hn7er"]
+atlas = ExtResource("2_walk")
+region = Rect2(512, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pj87r"]
+atlas = ExtResource("2_walk")
+region = Rect2(768, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nfrew"]
+atlas = ExtResource("2_walk")
+region = Rect2(1024, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t4fk0"]
+atlas = ExtResource("2_walk")
+region = Rect2(1280, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_w85s4"]
+atlas = ExtResource("2_walk")
+region = Rect2(1536, 512, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7gbe5"]
+atlas = ExtResource("2_walk")
+region = Rect2(0, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ekpvx"]
+atlas = ExtResource("2_walk")
+region = Rect2(256, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_m3x0r"]
+atlas = ExtResource("2_walk")
+region = Rect2(512, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dty3u"]
+atlas = ExtResource("2_walk")
+region = Rect2(768, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nbb45"]
+atlas = ExtResource("2_walk")
+region = Rect2(1024, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pxi3a"]
+atlas = ExtResource("2_walk")
+region = Rect2(1280, 768, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0w0ml"]
+atlas = ExtResource("2_walk")
+region = Rect2(1536, 768, 256, 256)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_6u8bp"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_eqvij")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wui42")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ile2d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0i8ai")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xsxnc")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_58fig")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v73cg")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_y3l1k")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_o64so")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_yjpqe")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dmkbm")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_m10bu")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_e8nby")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7veol")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hdolo")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7pmmb")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7kikq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7eaao")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_52xit")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j5aa8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_41wrc")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v4jir")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xw5es")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_sk4fu")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 12.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v2ies")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tswym")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_e5m6q")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_g0f7v")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xjisr")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_p5bry")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rgpvl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hemcx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_50f80")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rradr")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8n6ev")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ky17c")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bvarn")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8pnd5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qgdkx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_nnnte")
+}],
+"loop": true,
+"name": &"interact",
+"speed": 12.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_kb7qj")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_aagpn")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_22guf")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_g47e3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_cur56")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_edsm5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f5kay")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ijwiv")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ifcr8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mgbuo")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wbeew")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8xle5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_y6tbf")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_r6crj")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_pgw7n")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d2q51")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hn7er")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_pj87r")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_nfrew")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t4fk0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_w85s4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7gbe5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ekpvx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_m3x0r")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dty3u")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_nbb45")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_pxi3a")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0w0ml")
+}],
+"loop": true,
+"name": &"walking",
+"speed": 12.0
+}]
+
+[node name="Protagonist" type="Node2D"]
+position = Vector2(270, 780)
+script = ExtResource("1_actor")
+
+[node name="KaySprite" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+scale = Vector2(0.5, 0.5)
+sprite_frames = SubResource("SpriteFrames_6u8bp")
+animation = &"walking"
+frame_progress = 0.6303407
+
+[node name="Position2D" type="Marker2D" parent="."]
+position = Vector2(23, 14)
+
+[node name="Flower" type="Sprite2D" parent="Position2D"]
+visible = false
+position = Vector2(1, -14)
+texture = ExtResource("5_ile2d")
+hframes = 3
+vframes = 2
+</file>
+
 <file path="scenes/rooms/room_4.tscn">
 [gd_scene load_steps=143 format=3 uid="uid://btl2uopuar33r"]
 
@@ -1201,560 +1755,6 @@ polygon = PackedVector2Array(-25, 0, -12, -19, 0, -27, 12, -19, 25, 0, 0, 26)
 
 [node name="Protagonist" parent="." instance=ExtResource("2_protagonist")]
 position = Vector2(270, 700)
-</file>
-
-<file path="scenes/components/projectile.tscn">
-[gd_scene load_steps=5 format=3]
-
-[ext_resource type="Script" path="res://scripts/rooms/room_3/projectile.gd" id="1_projectile"]
-[ext_resource type="Texture2D" path="res://assets/sprites/Seringa.png" id="2_seringa"]
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_projectile"]
-radius = 24.0
-
-[node name="Projectile" type="Area2D" groups=["projectile"]]
-script = ExtResource("1_projectile")
-monitoring = true
-monitorable = true
-
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture_filter = 1
-texture = ExtResource("2_seringa")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_projectile")
-
-[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="."]
-rect = Rect2(-32, -32, 64, 64)
-
-[node name="LifetimeTimer" type="Timer" parent="."]
-wait_time = 5.0
-one_shot = true
-</file>
-
-<file path="scenes/components/protagonist.tscn">
-[gd_scene load_steps=75 format=3 uid="uid://bto3gsqr453yv"]
-
-[ext_resource type="Script" uid="uid://bfjxusln2e1fq" path="res://scripts/components/protagonist_actor.gd" id="1_actor"]
-[ext_resource type="Texture2D" uid="uid://bryfl2772redj" path="res://assets/sprites/KayIdle-1256x256_6C4L.png" id="1_idle"]
-[ext_resource type="Texture2D" uid="uid://dq0je40gwj218" path="res://assets/sprites/KayWalking-1256x256_7C4L.png" id="2_walk"]
-[ext_resource type="Texture2D" uid="uid://46euo4a3t4cu" path="res://assets/sprites/KayInteract-1256x256_4C4L.png" id="3_interact"]
-[ext_resource type="Texture2D" uid="uid://dx4srjjx7xifw" path="res://assets/sprites/GardenObjects.png" id="5_ile2d"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_eqvij"]
-atlas = ExtResource("1_idle")
-region = Rect2(0, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_wui42"]
-atlas = ExtResource("1_idle")
-region = Rect2(256, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ile2d"]
-atlas = ExtResource("1_idle")
-region = Rect2(512, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_0i8ai"]
-atlas = ExtResource("1_idle")
-region = Rect2(768, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_xsxnc"]
-atlas = ExtResource("1_idle")
-region = Rect2(1024, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_58fig"]
-atlas = ExtResource("1_idle")
-region = Rect2(1280, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_v73cg"]
-atlas = ExtResource("1_idle")
-region = Rect2(0, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_y3l1k"]
-atlas = ExtResource("1_idle")
-region = Rect2(256, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_o64so"]
-atlas = ExtResource("1_idle")
-region = Rect2(512, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_yjpqe"]
-atlas = ExtResource("1_idle")
-region = Rect2(768, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_dmkbm"]
-atlas = ExtResource("1_idle")
-region = Rect2(1024, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_m10bu"]
-atlas = ExtResource("1_idle")
-region = Rect2(1280, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_e8nby"]
-atlas = ExtResource("1_idle")
-region = Rect2(0, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_7veol"]
-atlas = ExtResource("1_idle")
-region = Rect2(256, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_hdolo"]
-atlas = ExtResource("1_idle")
-region = Rect2(512, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_7pmmb"]
-atlas = ExtResource("1_idle")
-region = Rect2(768, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_7kikq"]
-atlas = ExtResource("1_idle")
-region = Rect2(1024, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_7eaao"]
-atlas = ExtResource("1_idle")
-region = Rect2(1280, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_52xit"]
-atlas = ExtResource("1_idle")
-region = Rect2(0, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_j5aa8"]
-atlas = ExtResource("1_idle")
-region = Rect2(256, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_41wrc"]
-atlas = ExtResource("1_idle")
-region = Rect2(512, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_v4jir"]
-atlas = ExtResource("1_idle")
-region = Rect2(768, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_xw5es"]
-atlas = ExtResource("1_idle")
-region = Rect2(1024, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_sk4fu"]
-atlas = ExtResource("1_idle")
-region = Rect2(1280, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_v2ies"]
-atlas = ExtResource("3_interact")
-region = Rect2(0, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_tswym"]
-atlas = ExtResource("3_interact")
-region = Rect2(256, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_e5m6q"]
-atlas = ExtResource("3_interact")
-region = Rect2(512, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_g0f7v"]
-atlas = ExtResource("3_interact")
-region = Rect2(768, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_xjisr"]
-atlas = ExtResource("3_interact")
-region = Rect2(0, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_p5bry"]
-atlas = ExtResource("3_interact")
-region = Rect2(256, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_rgpvl"]
-atlas = ExtResource("3_interact")
-region = Rect2(512, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_hemcx"]
-atlas = ExtResource("3_interact")
-region = Rect2(768, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_50f80"]
-atlas = ExtResource("3_interact")
-region = Rect2(0, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_rradr"]
-atlas = ExtResource("3_interact")
-region = Rect2(256, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_8n6ev"]
-atlas = ExtResource("3_interact")
-region = Rect2(512, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ky17c"]
-atlas = ExtResource("3_interact")
-region = Rect2(768, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bvarn"]
-atlas = ExtResource("3_interact")
-region = Rect2(0, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_8pnd5"]
-atlas = ExtResource("3_interact")
-region = Rect2(256, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_qgdkx"]
-atlas = ExtResource("3_interact")
-region = Rect2(512, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_nnnte"]
-atlas = ExtResource("3_interact")
-region = Rect2(768, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_kb7qj"]
-atlas = ExtResource("2_walk")
-region = Rect2(0, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_aagpn"]
-atlas = ExtResource("2_walk")
-region = Rect2(256, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_22guf"]
-atlas = ExtResource("2_walk")
-region = Rect2(512, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_g47e3"]
-atlas = ExtResource("2_walk")
-region = Rect2(768, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_cur56"]
-atlas = ExtResource("2_walk")
-region = Rect2(1024, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_edsm5"]
-atlas = ExtResource("2_walk")
-region = Rect2(1280, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_f5kay"]
-atlas = ExtResource("2_walk")
-region = Rect2(1536, 0, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ijwiv"]
-atlas = ExtResource("2_walk")
-region = Rect2(0, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ifcr8"]
-atlas = ExtResource("2_walk")
-region = Rect2(256, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_mgbuo"]
-atlas = ExtResource("2_walk")
-region = Rect2(512, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_wbeew"]
-atlas = ExtResource("2_walk")
-region = Rect2(768, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_8xle5"]
-atlas = ExtResource("2_walk")
-region = Rect2(1024, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_y6tbf"]
-atlas = ExtResource("2_walk")
-region = Rect2(1280, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_r6crj"]
-atlas = ExtResource("2_walk")
-region = Rect2(1536, 256, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_pgw7n"]
-atlas = ExtResource("2_walk")
-region = Rect2(0, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_d2q51"]
-atlas = ExtResource("2_walk")
-region = Rect2(256, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_hn7er"]
-atlas = ExtResource("2_walk")
-region = Rect2(512, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_pj87r"]
-atlas = ExtResource("2_walk")
-region = Rect2(768, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_nfrew"]
-atlas = ExtResource("2_walk")
-region = Rect2(1024, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_t4fk0"]
-atlas = ExtResource("2_walk")
-region = Rect2(1280, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_w85s4"]
-atlas = ExtResource("2_walk")
-region = Rect2(1536, 512, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_7gbe5"]
-atlas = ExtResource("2_walk")
-region = Rect2(0, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ekpvx"]
-atlas = ExtResource("2_walk")
-region = Rect2(256, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_m3x0r"]
-atlas = ExtResource("2_walk")
-region = Rect2(512, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_dty3u"]
-atlas = ExtResource("2_walk")
-region = Rect2(768, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_nbb45"]
-atlas = ExtResource("2_walk")
-region = Rect2(1024, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_pxi3a"]
-atlas = ExtResource("2_walk")
-region = Rect2(1280, 768, 256, 256)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_0w0ml"]
-atlas = ExtResource("2_walk")
-region = Rect2(1536, 768, 256, 256)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_6u8bp"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_eqvij")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_wui42")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ile2d")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_0i8ai")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_xsxnc")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_58fig")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_v73cg")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_y3l1k")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_o64so")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_yjpqe")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_dmkbm")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_m10bu")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_e8nby")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_7veol")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_hdolo")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_7pmmb")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_7kikq")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_7eaao")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_52xit")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_j5aa8")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_41wrc")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_v4jir")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_xw5es")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_sk4fu")
-}],
-"loop": true,
-"name": &"idle",
-"speed": 12.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_v2ies")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_tswym")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_e5m6q")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_g0f7v")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_xjisr")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_p5bry")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_rgpvl")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_hemcx")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_50f80")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_rradr")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_8n6ev")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ky17c")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_bvarn")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_8pnd5")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_qgdkx")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_nnnte")
-}],
-"loop": true,
-"name": &"interact",
-"speed": 12.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_kb7qj")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_aagpn")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_22guf")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_g47e3")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_cur56")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_edsm5")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_f5kay")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ijwiv")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ifcr8")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_mgbuo")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_wbeew")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_8xle5")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_y6tbf")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_r6crj")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_pgw7n")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_d2q51")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_hn7er")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_pj87r")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_nfrew")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_t4fk0")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_w85s4")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_7gbe5")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ekpvx")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_m3x0r")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_dty3u")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_nbb45")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_pxi3a")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_0w0ml")
-}],
-"loop": true,
-"name": &"walking",
-"speed": 12.0
-}]
-
-[node name="Protagonist" type="Node2D"]
-position = Vector2(270, 780)
-script = ExtResource("1_actor")
-
-[node name="KaySprite" type="AnimatedSprite2D" parent="."]
-texture_filter = 1
-scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_6u8bp")
-animation = &"walking"
-frame_progress = 0.6303407
-
-[node name="Position2D" type="Marker2D" parent="."]
-position = Vector2(23, 14)
-
-[node name="Flower" type="Sprite2D" parent="Position2D"]
-visible = false
-position = Vector2(1, -14)
-texture = ExtResource("5_ile2d")
-hframes = 3
-vframes = 2
 </file>
 
 <file path="scenes/ui/final_screen.tscn">
@@ -6862,485 +6862,6 @@ func _get_bgm_track_key_for_scene_path(scene_path: String) -> String:
 	return ""
 </file>
 
-<file path="scripts/rooms/room_3/baby_interaction.gd">
-extends Area2D
-
-signal touch_count_changed(touch_count: int)
-signal minimum_touches_reached(touch_count: int)
-signal exit_requested
-
-const HEART_PATTERN: PackedStringArray = ["01100110", "11111111", "11111111", "11111111", "01111110", "00111100", "00011000", "00000000"]
-const HEART_COLOR: Color = Color(1.0, 0.45, 0.7, 1.0)
-const DEFAULT_HITBOX_SIZE: Vector2 = Vector2(220.0, 220.0)
-const EXIT_KEY_OFFSET: Vector2 = Vector2(0.0, -150.0)
-const EXIT_KEY_TEXTURE_PATH: String = "res://assets/sprites/key.png"
-const EXIT_KEY_HITBOX_SIZE: Vector2 = Vector2(96.0, 96.0)
-
-@export var hitbox_size: Vector2 = DEFAULT_HITBOX_SIZE
-@export var required_touches: int = 5
-@export var arrival_tolerance: float = 18.0
-@export var heart_float_distance: float = 64.0
-@export var heart_lifetime: float = 1.0
-@export var touch_sfx_variants: Array[AudioStream] = []
-
-@export_group("Exit Key Debug")
-@export var show_exit_key_hitbox_debug: bool = false
-
-@export_group("Roaming")
-@export var roam_enabled: bool = true
-@export var roam_speed: float = 110.0
-@export var roam_pause_min: float = 1.0
-@export var roam_pause_max: float = 3.0
-@export var roam_step_min: float = 48.0
-@export var roam_step_max: float = 180.0
-@export var roam_max_travel_duration: float = 1.8
-
-var _protagonist: Node2D
-var _touch_count: int = 0
-var _interaction_unlocked: bool = false
-var _moving_to_target: bool = false
-var _warned_missing_sfx: bool = false
-var _heart_texture: Texture2D
-var _roaming_active: bool = false
-var _roaming_loop_running: bool = false
-var _roaming_bounds: Rect2 = Rect2(Vector2.ZERO, Vector2(540.0, 960.0))
-var _roam_tween: Tween
-var _baby_visual_base_scale: Vector2 = Vector2.ONE
-var _exit_requested_sent: bool = false
-
-@onready var _collision_shape: CollisionShape2D = _ensure_collision_shape()
-@onready var _exit_key_root: Node2D = _ensure_exit_key_root()
-@onready var _baby_visual: AnimatedSprite2D = _resolve_baby_visual()
-
-
-func _enter_tree() -> void:
-	_ensure_collision_shape()
-
-
-func _ready() -> void:
-	_ensure_collision_shape()
-	input_pickable = false
-	monitoring = false
-	monitorable = false
-	_heart_texture = _build_heart_texture()
-	_hide_exit_key()
-	_update_exit_key_debug_visual()
-
-	if _baby_visual != null:
-		_baby_visual_base_scale = _baby_visual.scale
-		if is_zero_approx(_baby_visual_base_scale.x):
-			_baby_visual_base_scale.x = 1.0
-		if is_zero_approx(_baby_visual_base_scale.y):
-			_baby_visual_base_scale.y = 1.0
-
-	_play_baby_animation(&"idle")
-
-
-func setup(protagonist: Node2D, _target_position: Vector2) -> void:
-	_ensure_collision_shape()
-	if _protagonist != protagonist:
-		_disconnect_protagonist_signal()
-		_protagonist = protagonist
-		_connect_protagonist_signal()
-
-
-func configure_roaming_area(viewport_size: Vector2, margin_top: float, margin_bottom: float, margin_left: float, margin_right: float) -> void:
-	var safe_width: float = maxf(viewport_size.x - margin_left - margin_right, 1.0)
-	var safe_height: float = maxf(viewport_size.y - margin_top - margin_bottom, 1.0)
-	_roaming_bounds = Rect2(Vector2(margin_left, margin_top), Vector2(safe_width, safe_height))
-	global_position = _clamp_position_to_roaming_bounds(global_position)
-
-
-func set_interaction_enabled(is_enabled: bool) -> void:
-	_ensure_collision_shape()
-	input_pickable = is_enabled
-	monitoring = is_enabled
-	monitorable = is_enabled
-	if _collision_shape != null:
-		_collision_shape.set_deferred("disabled", not is_enabled)
-
-
-func set_roaming_enabled(is_enabled: bool) -> void:
-	roam_enabled = is_enabled
-	_roaming_active = is_enabled
-
-	if not _roaming_active:
-		if _roam_tween != null:
-			_roam_tween.kill()
-			_roam_tween = null
-		_play_baby_animation(&"idle")
-		return
-
-	if not _roaming_loop_running:
-		_run_roaming_loop()
-
-
-func get_touch_count() -> int:
-	return _touch_count
-
-
-func get_next_indicator() -> Node2D:
-	return _exit_key_root
-
-
-func _input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
-	var press_position: Variant = _extract_press_position(event)
-	if press_position == null:
-		return
-
-	var screen_press: Vector2 = press_position as Vector2
-
-	if _is_press_over_exit_key(screen_press):
-		_try_request_exit()
-		return
-
-	if not _interaction_unlocked:
-		_request_approach()
-		return
-
-	_register_touch(screen_press)
-
-
-func _request_approach() -> void:
-	if _protagonist == null or not _protagonist.has_method("move_to_global_position"):
-		return
-
-	_moving_to_target = true
-	_sync_protagonist_follow_target()
-
-
-func _sync_protagonist_follow_target() -> void:
-	if not _moving_to_target:
-		return
-	if _protagonist == null or not _protagonist.has_method("move_to_global_position"):
-		return
-
-	_protagonist.call("move_to_global_position", global_position)
-
-
-func _register_touch(screen_position: Vector2) -> void:
-	_touch_count += 1
-	_spawn_heart(_screen_to_global_position(screen_position))
-	_play_touch_sfx()
-	touch_count_changed.emit(_touch_count)
-
-	if _touch_count >= required_touches and not _exit_key_root.visible:
-		_show_exit_key()
-		minimum_touches_reached.emit(_touch_count)
-
-
-func _try_request_exit() -> void:
-	if not _exit_key_root.visible:
-		return
-	if _touch_count < required_touches:
-		return
-	if _exit_requested_sent:
-		return
-
-	_exit_requested_sent = true
-	exit_requested.emit()
-
-
-func _on_destination_reached(_destination: Vector2) -> void:
-	if not _moving_to_target:
-		return
-
-	if _protagonist != null and _protagonist.global_position.distance_to(global_position) <= arrival_tolerance:
-		_moving_to_target = false
-		_interaction_unlocked = true
-		return
-
-	_sync_protagonist_follow_target()
-
-
-func _connect_protagonist_signal() -> void:
-	if _protagonist == null or not _protagonist.has_signal("destination_reached"):
-		return
-
-	var callback: Callable = Callable(self, "_on_destination_reached")
-	if not _protagonist.is_connected("destination_reached", callback):
-		_protagonist.connect("destination_reached", callback)
-
-
-func _disconnect_protagonist_signal() -> void:
-	if _protagonist == null or not _protagonist.has_signal("destination_reached"):
-		return
-
-	var callback: Callable = Callable(self, "_on_destination_reached")
-	if _protagonist.is_connected("destination_reached", callback):
-		_protagonist.disconnect("destination_reached", callback)
-
-
-func _extract_press_position(event: InputEvent) -> Variant:
-	if event is InputEventMouseButton:
-		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
-		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			return mouse_event.position
-
-	if event is InputEventScreenTouch:
-		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
-		if touch_event.pressed:
-			return touch_event.position
-
-	return null
-
-
-func _screen_to_global_position(screen_position: Vector2) -> Vector2:
-	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
-
-
-func _spawn_heart(global_position_at_touch: Vector2) -> void:
-	if _heart_texture == null:
-		return
-
-	var heart: Sprite2D = Sprite2D.new()
-	heart.texture = _heart_texture
-	heart.scale = Vector2(4.0, 4.0)
-	heart.centered = true
-	heart.z_index = 20
-	heart.global_position = global_position_at_touch
-	get_parent().add_child(heart)
-
-	var tween: Tween = heart.create_tween()
-	tween.parallel().tween_property(heart, "global_position:y", heart.global_position.y - heart_float_distance, heart_lifetime)
-	tween.parallel().tween_property(heart, "modulate:a", 0.0, heart_lifetime)
-	tween.tween_callback(Callable(heart, "queue_free"))
-
-
-func _play_touch_sfx() -> void:
-	if touch_sfx_variants.is_empty():
-		if not _warned_missing_sfx:
-			_warned_missing_sfx = true
-			push_warning("BabyInteraction sem touch_sfx_variants configurados.")
-		return
-
-	var audio_manager: Node = get_node_or_null("/root/AudioManager")
-	if audio_manager == null or not audio_manager.has_method("play_sfx"):
-		return
-
-	var selected_sfx: AudioStream = touch_sfx_variants[randi() % touch_sfx_variants.size()]
-	if selected_sfx == null:
-		return
-
-	audio_manager.call("play_sfx", selected_sfx)
-
-
-func _run_roaming_loop() -> void:
-	_roaming_loop_running = true
-
-	while _roaming_active and roam_enabled:
-		var destination: Vector2 = _pick_next_roaming_position()
-		var delta: Vector2 = destination - global_position
-		var travel_distance: float = delta.length()
-
-		if travel_distance >= 2.0:
-			_update_visual_direction(delta.x)
-			_play_baby_animation(&"walk")
-
-			var travel_duration: float = _calculate_travel_duration(travel_distance)
-			if _roam_tween != null:
-				_roam_tween.kill()
-
-			_roam_tween = create_tween()
-			_roam_tween.tween_property(self, "global_position", destination, travel_duration)
-			await _roam_tween.finished
-			_roam_tween = null
-
-			if _moving_to_target:
-				_sync_protagonist_follow_target()
-
-			_play_baby_animation(&"idle")
-
-			var play_time: float = _pick_idle_play_time(travel_duration)
-			await get_tree().create_timer(play_time).timeout
-			continue
-
-		_play_baby_animation(&"idle")
-		await get_tree().create_timer(0.35).timeout
-
-	_roaming_loop_running = false
-	_play_baby_animation(&"idle")
-
-
-func _calculate_travel_duration(travel_distance: float) -> float:
-	var speed_duration: float = travel_distance / maxf(roam_speed, 1.0)
-	return clampf(speed_duration, 0.12, roam_max_travel_duration)
-
-
-func _pick_idle_play_time(travel_duration: float) -> float:
-	var min_pause: float = maxf(roam_pause_min, travel_duration + 0.1)
-	var max_pause: float = maxf(roam_pause_max, min_pause)
-	return randf_range(min_pause, max_pause)
-
-
-func _pick_next_roaming_position() -> Vector2:
-	var angle: float = randf_range(0.0, TAU)
-	var distance: float = randf_range(roam_step_min, roam_step_max)
-	var offset: Vector2 = Vector2.RIGHT.rotated(angle) * distance
-	var candidate: Vector2 = global_position + offset
-	return _clamp_position_to_roaming_bounds(candidate)
-
-
-func _clamp_position_to_roaming_bounds(target_position: Vector2) -> Vector2:
-	return Vector2(
-		clampf(target_position.x, _roaming_bounds.position.x, _roaming_bounds.end.x),
-		clampf(target_position.y, _roaming_bounds.position.y, _roaming_bounds.end.y)
-	)
-
-
-func _update_visual_direction(horizontal_delta: float) -> void:
-	if _baby_visual == null:
-		return
-
-	var scale_x: float = absf(_baby_visual_base_scale.x)
-	if scale_x <= 0.0:
-		scale_x = 1.0
-
-	if horizontal_delta < -0.5:
-		_baby_visual.scale = Vector2(-scale_x, _baby_visual_base_scale.y)
-	elif horizontal_delta > 0.5:
-		_baby_visual.scale = Vector2(scale_x, _baby_visual_base_scale.y)
-
-
-func _play_baby_animation(animation_name: StringName) -> void:
-	if _baby_visual == null or _baby_visual.sprite_frames == null:
-		return
-	if not _baby_visual.sprite_frames.has_animation(animation_name):
-		return
-	if _baby_visual.animation == animation_name and _baby_visual.is_playing():
-		return
-
-	_baby_visual.play(animation_name)
-
-
-func _resolve_baby_visual() -> AnimatedSprite2D:
-	for node_variant in find_children("*", "AnimatedSprite2D", true, false):
-		var animated_sprite: AnimatedSprite2D = node_variant as AnimatedSprite2D
-		if animated_sprite != null:
-			return animated_sprite
-	return null
-
-
-func _ensure_collision_shape() -> CollisionShape2D:
-	var collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if collision_shape == null:
-		collision_shape = CollisionShape2D.new()
-		collision_shape.name = "CollisionShape2D"
-		add_child(collision_shape)
-
-	var rectangle_shape: RectangleShape2D = collision_shape.shape as RectangleShape2D
-	if rectangle_shape == null:
-		rectangle_shape = RectangleShape2D.new()
-		collision_shape.shape = rectangle_shape
-
-	var combined_top: float = minf(-hitbox_size.y * 0.5, EXIT_KEY_OFFSET.y - EXIT_KEY_HITBOX_SIZE.y * 0.5)
-	var combined_bottom: float = maxf(hitbox_size.y * 0.5, EXIT_KEY_OFFSET.y + EXIT_KEY_HITBOX_SIZE.y * 0.5)
-	var combined_left: float = minf(-hitbox_size.x * 0.5, EXIT_KEY_OFFSET.x - EXIT_KEY_HITBOX_SIZE.x * 0.5)
-	var combined_right: float = maxf(hitbox_size.x * 0.5, EXIT_KEY_OFFSET.x + EXIT_KEY_HITBOX_SIZE.x * 0.5)
-
-	var combined_size: Vector2 = Vector2(combined_right - combined_left, combined_bottom - combined_top).max(Vector2.ONE)
-	var combined_center: Vector2 = Vector2(
-		(combined_left + combined_right) * 0.5,
-		(combined_top + combined_bottom) * 0.5
-	)
-
-	rectangle_shape.size = combined_size
-	collision_shape.position = combined_center
-	collision_shape.shape = rectangle_shape
-	collision_shape.disabled = not input_pickable
-	return collision_shape
-
-
-func _show_exit_key() -> void:
-	_exit_requested_sent = false
-	_exit_key_root.visible = true
-	_update_exit_key_debug_visual()
-
-
-func _hide_exit_key() -> void:
-	_exit_requested_sent = false
-	_exit_key_root.visible = false
-	_update_exit_key_debug_visual()
-
-
-func _is_press_over_exit_key(screen_position: Vector2) -> bool:
-	if not is_instance_valid(_exit_key_root) or not _exit_key_root.visible:
-		return false
-
-	var global_point: Vector2 = _screen_to_global_position(screen_position)
-	var local_point: Vector2 = _exit_key_root.to_local(global_point)
-	return absf(local_point.x) <= EXIT_KEY_HITBOX_SIZE.x * 0.5 and absf(local_point.y) <= EXIT_KEY_HITBOX_SIZE.y * 0.5
-
-
-func _ensure_exit_key_root() -> Node2D:
-	var exit_key_root: Node2D = get_node_or_null("ExitKey") as Node2D
-	if exit_key_root == null:
-		exit_key_root = Node2D.new()
-		exit_key_root.name = "ExitKey"
-		add_child(exit_key_root)
-
-	exit_key_root.position = EXIT_KEY_OFFSET
-	exit_key_root.z_index = 40
-	exit_key_root.visible = false
-
-	var sprite: Sprite2D = exit_key_root.get_node_or_null("Sprite2D") as Sprite2D
-	if sprite == null:
-		sprite = Sprite2D.new()
-		sprite.name = "Sprite2D"
-		exit_key_root.add_child(sprite)
-
-	sprite.centered = true
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	sprite.scale = Vector2.ONE
-	sprite.modulate = Color(1.0, 1.0, 1.0, 0.95)
-	if ResourceLoader.exists(EXIT_KEY_TEXTURE_PATH):
-		sprite.texture = load(EXIT_KEY_TEXTURE_PATH) as Texture2D
-	else:
-		push_warning("BabyInteraction nao encontrou a chave de saida em %s." % EXIT_KEY_TEXTURE_PATH)
-
-	var debug_rect: Polygon2D = exit_key_root.get_node_or_null("DebugRect") as Polygon2D
-	if debug_rect == null:
-		debug_rect = Polygon2D.new()
-		debug_rect.name = "DebugRect"
-		exit_key_root.add_child(debug_rect)
-
-	debug_rect.z_index = 41
-	debug_rect.color = Color(0.2, 1.0, 0.2, 0.28)
-	debug_rect.polygon = PackedVector2Array([
-		Vector2(-EXIT_KEY_HITBOX_SIZE.x * 0.5, -EXIT_KEY_HITBOX_SIZE.y * 0.5),
-		Vector2(EXIT_KEY_HITBOX_SIZE.x * 0.5, -EXIT_KEY_HITBOX_SIZE.y * 0.5),
-		Vector2(EXIT_KEY_HITBOX_SIZE.x * 0.5, EXIT_KEY_HITBOX_SIZE.y * 0.5),
-		Vector2(-EXIT_KEY_HITBOX_SIZE.x * 0.5, EXIT_KEY_HITBOX_SIZE.y * 0.5)
-	])
-	debug_rect.visible = false
-
-	return exit_key_root
-
-
-func _update_exit_key_debug_visual() -> void:
-	if not is_instance_valid(_exit_key_root):
-		return
-
-	var debug_rect: Polygon2D = _exit_key_root.get_node_or_null("DebugRect") as Polygon2D
-	if debug_rect == null:
-		return
-
-	debug_rect.visible = show_exit_key_hitbox_debug and _exit_key_root.visible
-
-
-func _build_heart_texture() -> Texture2D:
-	var image: Image = Image.create(8, 8, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0.0, 0.0, 0.0, 0.0))
-
-	for y in range(HEART_PATTERN.size()):
-		var row: String = HEART_PATTERN[y]
-		for x in range(row.length()):
-			if row[x] == "1":
-				image.set_pixel(x, y, HEART_COLOR)
-
-	return ImageTexture.create_from_image(image)
-</file>
-
 <file path="scripts/rooms/room_1_controller.gd">
 extends Node2D
 
@@ -8585,6 +8106,485 @@ func _build_final_loop_frames() -> SpriteFrames:
 			sprite_frames.add_frame(&"final_loop", atlas_texture)
 
 	return sprite_frames
+</file>
+
+<file path="scripts/rooms/room_3/baby_interaction.gd">
+extends Area2D
+
+signal touch_count_changed(touch_count: int)
+signal minimum_touches_reached(touch_count: int)
+signal exit_requested
+
+const HEART_PATTERN: PackedStringArray = ["01100110", "11111111", "11111111", "11111111", "01111110", "00111100", "00011000", "00000000"]
+const HEART_COLOR: Color = Color(1.0, 0.45, 0.7, 1.0)
+const DEFAULT_HITBOX_SIZE: Vector2 = Vector2(220.0, 220.0)
+const EXIT_KEY_OFFSET: Vector2 = Vector2(0.0, -150.0)
+const EXIT_KEY_TEXTURE_PATH: String = "res://assets/sprites/key.png"
+const EXIT_KEY_HITBOX_SIZE: Vector2 = Vector2(96.0, 96.0)
+
+@export var hitbox_size: Vector2 = DEFAULT_HITBOX_SIZE
+@export var required_touches: int = 5
+@export var arrival_tolerance: float = 18.0
+@export var heart_float_distance: float = 64.0
+@export var heart_lifetime: float = 1.0
+@export var touch_sfx_variants: Array[AudioStream] = []
+
+@export_group("Exit Key Debug")
+@export var show_exit_key_hitbox_debug: bool = false
+
+@export_group("Roaming")
+@export var roam_enabled: bool = true
+@export var roam_speed: float = 110.0
+@export var roam_pause_min: float = 1.0
+@export var roam_pause_max: float = 3.0
+@export var roam_step_min: float = 48.0
+@export var roam_step_max: float = 180.0
+@export var roam_max_travel_duration: float = 1.8
+
+var _protagonist: Node2D
+var _touch_count: int = 0
+var _interaction_unlocked: bool = false
+var _moving_to_target: bool = false
+var _warned_missing_sfx: bool = false
+var _heart_texture: Texture2D
+var _roaming_active: bool = false
+var _roaming_loop_running: bool = false
+var _roaming_bounds: Rect2 = Rect2(Vector2.ZERO, Vector2(540.0, 960.0))
+var _roam_tween: Tween
+var _baby_visual_base_scale: Vector2 = Vector2.ONE
+var _exit_requested_sent: bool = false
+
+@onready var _collision_shape: CollisionShape2D = _ensure_collision_shape()
+@onready var _exit_key_root: Node2D = _ensure_exit_key_root()
+@onready var _baby_visual: AnimatedSprite2D = _resolve_baby_visual()
+
+
+func _enter_tree() -> void:
+	_ensure_collision_shape()
+
+
+func _ready() -> void:
+	_ensure_collision_shape()
+	input_pickable = false
+	monitoring = false
+	monitorable = false
+	_heart_texture = _build_heart_texture()
+	_hide_exit_key()
+	_update_exit_key_debug_visual()
+
+	if _baby_visual != null:
+		_baby_visual_base_scale = _baby_visual.scale
+		if is_zero_approx(_baby_visual_base_scale.x):
+			_baby_visual_base_scale.x = 1.0
+		if is_zero_approx(_baby_visual_base_scale.y):
+			_baby_visual_base_scale.y = 1.0
+
+	_play_baby_animation(&"idle")
+
+
+func setup(protagonist: Node2D, _target_position: Vector2) -> void:
+	_ensure_collision_shape()
+	if _protagonist != protagonist:
+		_disconnect_protagonist_signal()
+		_protagonist = protagonist
+		_connect_protagonist_signal()
+
+
+func configure_roaming_area(viewport_size: Vector2, margin_top: float, margin_bottom: float, margin_left: float, margin_right: float) -> void:
+	var safe_width: float = maxf(viewport_size.x - margin_left - margin_right, 1.0)
+	var safe_height: float = maxf(viewport_size.y - margin_top - margin_bottom, 1.0)
+	_roaming_bounds = Rect2(Vector2(margin_left, margin_top), Vector2(safe_width, safe_height))
+	global_position = _clamp_position_to_roaming_bounds(global_position)
+
+
+func set_interaction_enabled(is_enabled: bool) -> void:
+	_ensure_collision_shape()
+	input_pickable = is_enabled
+	monitoring = is_enabled
+	monitorable = is_enabled
+	if _collision_shape != null:
+		_collision_shape.set_deferred("disabled", not is_enabled)
+
+
+func set_roaming_enabled(is_enabled: bool) -> void:
+	roam_enabled = is_enabled
+	_roaming_active = is_enabled
+
+	if not _roaming_active:
+		if _roam_tween != null:
+			_roam_tween.kill()
+			_roam_tween = null
+		_play_baby_animation(&"idle")
+		return
+
+	if not _roaming_loop_running:
+		_run_roaming_loop()
+
+
+func get_touch_count() -> int:
+	return _touch_count
+
+
+func get_next_indicator() -> Node2D:
+	return _exit_key_root
+
+
+func _input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	var press_position: Variant = _extract_press_position(event)
+	if press_position == null:
+		return
+
+	var screen_press: Vector2 = press_position as Vector2
+
+	if _is_press_over_exit_key(screen_press):
+		_try_request_exit()
+		return
+
+	if not _interaction_unlocked:
+		_request_approach()
+		return
+
+	_register_touch(screen_press)
+
+
+func _request_approach() -> void:
+	if _protagonist == null or not _protagonist.has_method("move_to_global_position"):
+		return
+
+	_moving_to_target = true
+	_sync_protagonist_follow_target()
+
+
+func _sync_protagonist_follow_target() -> void:
+	if not _moving_to_target:
+		return
+	if _protagonist == null or not _protagonist.has_method("move_to_global_position"):
+		return
+
+	_protagonist.call("move_to_global_position", global_position)
+
+
+func _register_touch(screen_position: Vector2) -> void:
+	_touch_count += 1
+	_spawn_heart(_screen_to_global_position(screen_position))
+	_play_touch_sfx()
+	touch_count_changed.emit(_touch_count)
+
+	if _touch_count >= required_touches and not _exit_key_root.visible:
+		_show_exit_key()
+		minimum_touches_reached.emit(_touch_count)
+
+
+func _try_request_exit() -> void:
+	if not _exit_key_root.visible:
+		return
+	if _touch_count < required_touches:
+		return
+	if _exit_requested_sent:
+		return
+
+	_exit_requested_sent = true
+	exit_requested.emit()
+
+
+func _on_destination_reached(_destination: Vector2) -> void:
+	if not _moving_to_target:
+		return
+
+	if _protagonist != null and _protagonist.global_position.distance_to(global_position) <= arrival_tolerance:
+		_moving_to_target = false
+		_interaction_unlocked = true
+		return
+
+	_sync_protagonist_follow_target()
+
+
+func _connect_protagonist_signal() -> void:
+	if _protagonist == null or not _protagonist.has_signal("destination_reached"):
+		return
+
+	var callback: Callable = Callable(self, "_on_destination_reached")
+	if not _protagonist.is_connected("destination_reached", callback):
+		_protagonist.connect("destination_reached", callback)
+
+
+func _disconnect_protagonist_signal() -> void:
+	if _protagonist == null or not _protagonist.has_signal("destination_reached"):
+		return
+
+	var callback: Callable = Callable(self, "_on_destination_reached")
+	if _protagonist.is_connected("destination_reached", callback):
+		_protagonist.disconnect("destination_reached", callback)
+
+
+func _extract_press_position(event: InputEvent) -> Variant:
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			return mouse_event.position
+
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.pressed:
+			return touch_event.position
+
+	return null
+
+
+func _screen_to_global_position(screen_position: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
+
+
+func _spawn_heart(global_position_at_touch: Vector2) -> void:
+	if _heart_texture == null:
+		return
+
+	var heart: Sprite2D = Sprite2D.new()
+	heart.texture = _heart_texture
+	heart.scale = Vector2(4.0, 4.0)
+	heart.centered = true
+	heart.z_index = 20
+	heart.global_position = global_position_at_touch
+	get_parent().add_child(heart)
+
+	var tween: Tween = heart.create_tween()
+	tween.parallel().tween_property(heart, "global_position:y", heart.global_position.y - heart_float_distance, heart_lifetime)
+	tween.parallel().tween_property(heart, "modulate:a", 0.0, heart_lifetime)
+	tween.tween_callback(Callable(heart, "queue_free"))
+
+
+func _play_touch_sfx() -> void:
+	if touch_sfx_variants.is_empty():
+		if not _warned_missing_sfx:
+			_warned_missing_sfx = true
+			push_warning("BabyInteraction sem touch_sfx_variants configurados.")
+		return
+
+	var audio_manager: Node = get_node_or_null("/root/AudioManager")
+	if audio_manager == null or not audio_manager.has_method("play_sfx"):
+		return
+
+	var selected_sfx: AudioStream = touch_sfx_variants[randi() % touch_sfx_variants.size()]
+	if selected_sfx == null:
+		return
+
+	audio_manager.call("play_sfx", selected_sfx)
+
+
+func _run_roaming_loop() -> void:
+	_roaming_loop_running = true
+
+	while _roaming_active and roam_enabled:
+		var destination: Vector2 = _pick_next_roaming_position()
+		var delta: Vector2 = destination - global_position
+		var travel_distance: float = delta.length()
+
+		if travel_distance >= 2.0:
+			_update_visual_direction(delta.x)
+			_play_baby_animation(&"walk")
+
+			var travel_duration: float = _calculate_travel_duration(travel_distance)
+			if _roam_tween != null:
+				_roam_tween.kill()
+
+			_roam_tween = create_tween()
+			_roam_tween.tween_property(self, "global_position", destination, travel_duration)
+			await _roam_tween.finished
+			_roam_tween = null
+
+			if _moving_to_target:
+				_sync_protagonist_follow_target()
+
+			_play_baby_animation(&"idle")
+
+			var play_time: float = _pick_idle_play_time(travel_duration)
+			await get_tree().create_timer(play_time).timeout
+			continue
+
+		_play_baby_animation(&"idle")
+		await get_tree().create_timer(0.35).timeout
+
+	_roaming_loop_running = false
+	_play_baby_animation(&"idle")
+
+
+func _calculate_travel_duration(travel_distance: float) -> float:
+	var speed_duration: float = travel_distance / maxf(roam_speed, 1.0)
+	return clampf(speed_duration, 0.12, roam_max_travel_duration)
+
+
+func _pick_idle_play_time(travel_duration: float) -> float:
+	var min_pause: float = maxf(roam_pause_min, travel_duration + 0.1)
+	var max_pause: float = maxf(roam_pause_max, min_pause)
+	return randf_range(min_pause, max_pause)
+
+
+func _pick_next_roaming_position() -> Vector2:
+	var angle: float = randf_range(0.0, TAU)
+	var distance: float = randf_range(roam_step_min, roam_step_max)
+	var offset: Vector2 = Vector2.RIGHT.rotated(angle) * distance
+	var candidate: Vector2 = global_position + offset
+	return _clamp_position_to_roaming_bounds(candidate)
+
+
+func _clamp_position_to_roaming_bounds(target_position: Vector2) -> Vector2:
+	return Vector2(
+		clampf(target_position.x, _roaming_bounds.position.x, _roaming_bounds.end.x),
+		clampf(target_position.y, _roaming_bounds.position.y, _roaming_bounds.end.y)
+	)
+
+
+func _update_visual_direction(horizontal_delta: float) -> void:
+	if _baby_visual == null:
+		return
+
+	var scale_x: float = absf(_baby_visual_base_scale.x)
+	if scale_x <= 0.0:
+		scale_x = 1.0
+
+	if horizontal_delta < -0.5:
+		_baby_visual.scale = Vector2(-scale_x, _baby_visual_base_scale.y)
+	elif horizontal_delta > 0.5:
+		_baby_visual.scale = Vector2(scale_x, _baby_visual_base_scale.y)
+
+
+func _play_baby_animation(animation_name: StringName) -> void:
+	if _baby_visual == null or _baby_visual.sprite_frames == null:
+		return
+	if not _baby_visual.sprite_frames.has_animation(animation_name):
+		return
+	if _baby_visual.animation == animation_name and _baby_visual.is_playing():
+		return
+
+	_baby_visual.play(animation_name)
+
+
+func _resolve_baby_visual() -> AnimatedSprite2D:
+	for node_variant in find_children("*", "AnimatedSprite2D", true, false):
+		var animated_sprite: AnimatedSprite2D = node_variant as AnimatedSprite2D
+		if animated_sprite != null:
+			return animated_sprite
+	return null
+
+
+func _ensure_collision_shape() -> CollisionShape2D:
+	var collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision_shape == null:
+		collision_shape = CollisionShape2D.new()
+		collision_shape.name = "CollisionShape2D"
+		add_child(collision_shape)
+
+	var rectangle_shape: RectangleShape2D = collision_shape.shape as RectangleShape2D
+	if rectangle_shape == null:
+		rectangle_shape = RectangleShape2D.new()
+		collision_shape.shape = rectangle_shape
+
+	var combined_top: float = minf(-hitbox_size.y * 0.5, EXIT_KEY_OFFSET.y - EXIT_KEY_HITBOX_SIZE.y * 0.5)
+	var combined_bottom: float = maxf(hitbox_size.y * 0.5, EXIT_KEY_OFFSET.y + EXIT_KEY_HITBOX_SIZE.y * 0.5)
+	var combined_left: float = minf(-hitbox_size.x * 0.5, EXIT_KEY_OFFSET.x - EXIT_KEY_HITBOX_SIZE.x * 0.5)
+	var combined_right: float = maxf(hitbox_size.x * 0.5, EXIT_KEY_OFFSET.x + EXIT_KEY_HITBOX_SIZE.x * 0.5)
+
+	var combined_size: Vector2 = Vector2(combined_right - combined_left, combined_bottom - combined_top).max(Vector2.ONE)
+	var combined_center: Vector2 = Vector2(
+		(combined_left + combined_right) * 0.5,
+		(combined_top + combined_bottom) * 0.5
+	)
+
+	rectangle_shape.size = combined_size
+	collision_shape.position = combined_center
+	collision_shape.shape = rectangle_shape
+	collision_shape.disabled = not input_pickable
+	return collision_shape
+
+
+func _show_exit_key() -> void:
+	_exit_requested_sent = false
+	_exit_key_root.visible = true
+	_update_exit_key_debug_visual()
+
+
+func _hide_exit_key() -> void:
+	_exit_requested_sent = false
+	_exit_key_root.visible = false
+	_update_exit_key_debug_visual()
+
+
+func _is_press_over_exit_key(screen_position: Vector2) -> bool:
+	if not is_instance_valid(_exit_key_root) or not _exit_key_root.visible:
+		return false
+
+	var global_point: Vector2 = _screen_to_global_position(screen_position)
+	var local_point: Vector2 = _exit_key_root.to_local(global_point)
+	return absf(local_point.x) <= EXIT_KEY_HITBOX_SIZE.x * 0.5 and absf(local_point.y) <= EXIT_KEY_HITBOX_SIZE.y * 0.5
+
+
+func _ensure_exit_key_root() -> Node2D:
+	var exit_key_root: Node2D = get_node_or_null("ExitKey") as Node2D
+	if exit_key_root == null:
+		exit_key_root = Node2D.new()
+		exit_key_root.name = "ExitKey"
+		add_child(exit_key_root)
+
+	exit_key_root.position = EXIT_KEY_OFFSET
+	exit_key_root.z_index = 40
+	exit_key_root.visible = false
+
+	var sprite: Sprite2D = exit_key_root.get_node_or_null("Sprite2D") as Sprite2D
+	if sprite == null:
+		sprite = Sprite2D.new()
+		sprite.name = "Sprite2D"
+		exit_key_root.add_child(sprite)
+
+	sprite.centered = true
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.scale = Vector2.ONE
+	sprite.modulate = Color(1.0, 1.0, 1.0, 0.95)
+	if ResourceLoader.exists(EXIT_KEY_TEXTURE_PATH):
+		sprite.texture = load(EXIT_KEY_TEXTURE_PATH) as Texture2D
+	else:
+		push_warning("BabyInteraction nao encontrou a chave de saida em %s." % EXIT_KEY_TEXTURE_PATH)
+
+	var debug_rect: Polygon2D = exit_key_root.get_node_or_null("DebugRect") as Polygon2D
+	if debug_rect == null:
+		debug_rect = Polygon2D.new()
+		debug_rect.name = "DebugRect"
+		exit_key_root.add_child(debug_rect)
+
+	debug_rect.z_index = 41
+	debug_rect.color = Color(0.2, 1.0, 0.2, 0.28)
+	debug_rect.polygon = PackedVector2Array([
+		Vector2(-EXIT_KEY_HITBOX_SIZE.x * 0.5, -EXIT_KEY_HITBOX_SIZE.y * 0.5),
+		Vector2(EXIT_KEY_HITBOX_SIZE.x * 0.5, -EXIT_KEY_HITBOX_SIZE.y * 0.5),
+		Vector2(EXIT_KEY_HITBOX_SIZE.x * 0.5, EXIT_KEY_HITBOX_SIZE.y * 0.5),
+		Vector2(-EXIT_KEY_HITBOX_SIZE.x * 0.5, EXIT_KEY_HITBOX_SIZE.y * 0.5)
+	])
+	debug_rect.visible = false
+
+	return exit_key_root
+
+
+func _update_exit_key_debug_visual() -> void:
+	if not is_instance_valid(_exit_key_root):
+		return
+
+	var debug_rect: Polygon2D = _exit_key_root.get_node_or_null("DebugRect") as Polygon2D
+	if debug_rect == null:
+		return
+
+	debug_rect.visible = show_exit_key_hitbox_debug and _exit_key_root.visible
+
+
+func _build_heart_texture() -> Texture2D:
+	var image: Image = Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.0, 0.0, 0.0, 0.0))
+
+	for y in range(HEART_PATTERN.size()):
+		var row: String = HEART_PATTERN[y]
+		for x in range(row.length()):
+			if row[x] == "1":
+				image.set_pixel(x, y, HEART_COLOR)
+
+	return ImageTexture.create_from_image(image)
 </file>
 
 <file path="project.godot">
@@ -10134,7 +10134,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Última sala do hub. A protagonista coleta as peças espalhadas, leva o coração ao centro e só então o minigame de montagem é aberto
 - **Diretorio:** /scripts/rooms/room_4/ e /scenes/rooms/
 - **Micro-Tasks:**
-  - [ ] MT-5.3.1: Criar `room_4.tscn` com fundo escuro, protagonista, sprite do garoto chorando no centro-baixo e a área central onde o coração será montado. Posicionar 5-7 peças do coração proceduralmente espalhadas pelo cenário como alvos de coleta
+  - [X] MT-5.3.1: Criar `room_4.tscn` com fundo escuro, protagonista, sprite do garoto chorando no centro-baixo e a área central onde o coração será montado. Posicionar 5-7 peças do coração proceduralmente espalhadas pelo cenário como alvos de coleta
   - [ ] MT-5.3.2: Implementar a etapa de coleta: ao clicar numa peça, a protagonista vai até ela, coleta a peça e atualiza o progresso. Depois que todas forem coletadas, clicar/acionar a área central faz a protagonista levar o coração procedural ao centro 
   - [ ] MT-5.3.3: Criar `room_4_controller.gd`: rastrear `_pieces_collected: int`, reagir à coleta de peças e, quando todas tiverem sido recolhidas, abrir o minigame de montagem apenas quando a protagonista alcançar a área central, o minigame tem o coração preto no fundo mostrando o molde, e as peças procedural pra arrastar e preencher. 
   - [ ] MT-5.3.4: Dentro do minigame de montagem, usar `DropZone` com `accepted_id` para que cada peça encaixe apenas no slot correto (procedural). Se `accepted_id != ""` e `drag_id` não corresponde, rejeitar o drop (snap back), se for difícil implementar, pode ser apenas esferas brilhantes que arrastando vai enchendo sem tanta rigidez.

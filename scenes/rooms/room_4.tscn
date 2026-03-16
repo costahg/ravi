@@ -1,4 +1,4 @@
-[gd_scene load_steps=143 format=3 uid="uid://btl2uopuar33r"]
+[gd_scene load_steps=144 format=3 uid="uid://btl2uopuar33r"]
 
 [ext_resource type="Script" uid="uid://vjccydmum12g" path="res://scripts/components/hotspot.gd" id="1_hotspot"]
 [ext_resource type="PackedScene" uid="uid://bto3gsqr453yv" path="res://scenes/components/protagonist.tscn" id="2_protagonist"]
@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://c0aoh776d1aa4" path="res://assets/sprites/HenriIdle-1256x256_6C6L_S01.png" id="6_henri_idle"]
 [ext_resource type="Texture2D" uid="uid://d4ihlu8tx7ft" path="res://assets/sprites/HenriInteract-1256x256_6C5L.png" id="7_henri_interact"]
 [ext_resource type="Texture2D" uid="uid://ccnhxdvp1jcb7" path="res://assets/sprites/BonecaLoop256x256_7C5L.png" id="8_boneca_loop"]
+[ext_resource type="Script" uid="uid://iwrmov5c3bh0" path="res://scripts/rooms/room_4_controller.gd" id="9_room4_controller"]
 [ext_resource type="Texture2D" uid="uid://de6ispa122112" path="res://assets/sprites/EndImage.png" id="10_end_image"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bg_before_0"]
@@ -948,6 +949,7 @@ animations = [{
 size = Vector2(110, 130)
 
 [node name="Room4" type="Node2D"]
+script = ExtResource("9_room4_controller")
 metadata/_edit_vertical_guides_ = [-508.0]
 
 [node name="BackgroundBefore" type="AnimatedSprite2D" parent="."]
