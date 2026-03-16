@@ -1,10 +1,10 @@
-This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
 
 <file_summary>
 This section contains a summary of this file.
 
 <purpose>
-This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 </purpose>
@@ -32,7 +32,6 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: project.md, scripts/core/audio_manager.gd, scripts/core/game_manager.gd, scripts/rooms/main_menu_controller.gd, scripts/rooms/room_1_controller.gd, scripts/rooms/room_2_controller.gd, scripts/rooms/room_3_controller.gd
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -41,22 +40,2196 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-scripts/
-  core/
-    audio_manager.gd
-    game_manager.gd
-  rooms/
-    main_menu_controller.gd
-    room_1_controller.gd
-    room_2_controller.gd
-    room_3_controller.gd
-project.md
+components/
+  draggable.gd
+  draggable.gd.uid
+  drop_zone.gd
+  drop_zone.gd.uid
+  event_chain.gd
+  event_chain.gd.uid
+  hotspot.gd
+  hotspot.gd.uid
+  protagonist_actor.gd
+  protagonist_actor.gd.uid
+  revealer.gd
+  revealer.gd.uid
+core/
+  audio_manager.gd
+  audio_manager.gd.uid
+  game_manager_test.gd
+  game_manager_test.gd.uid
+  game_manager.gd
+  game_manager.gd.uid
+rooms/
+  room_3/
+    baby_interaction.gd
+    baby_interaction.gd.uid
+    bullet_spawner.gd
+    bullet_spawner.gd.uid
+    player_dodge.gd
+    player_dodge.gd.uid
+    projectile.gd
+    projectile.gd.uid
+  main_menu_controller.gd
+  main_menu_controller.gd.uid
+  room_1_controller.gd
+  room_1_controller.gd.uid
+  room_2_controller.gd
+  room_2_controller.gd.uid
+  room_3_controller.gd
+  room_3_controller.gd.uid
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="scripts/rooms/main_menu_controller.gd">
+<file path="components/draggable.gd">
+extends Area2D
+
+signal drag_started(drag_id: String)
+signal drag_ended(drag_id: String)
+signal dropped_on_target(drag_id: String, target_area: Area2D)
+
+const DROP_TARGET_GROUP: StringName = &"drop_target"
+const SNAP_BACK_DURATION: float = 0.2
+
+@export var drag_id: String = ""
+@export var snap_back: bool = true
+@export var snap_distance: float = 40.0
+@export var active: bool = true
+
+static var _drag_owner: Node = null
+
+var _origin_position: Vector2 = Vector2.ZERO
+var _dragging: bool = false
+var _active_touch_index: int = -1
+var _mouse_dragging: bool = false
+
+
+func _ready() -> void:
+	_origin_position = global_position
+	input_pickable = true
+	monitoring = true
+	monitorable = true
+	set_process_input(true)
+
+
+func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
+	if not active:
+		return
+
+	if _dragging or (_drag_owner != null and _drag_owner != self):
+		return
+
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_begin_mouse_drag()
+			return
+
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.pressed:
+			_begin_touch_drag(touch_event.index)
+
+
+func _input(event: InputEvent) -> void:
+	if not _dragging:
+		return
+
+	if _mouse_dragging and event is InputEventMouseMotion:
+		var mouse_motion: InputEventMouseMotion = event as InputEventMouseMotion
+		global_position = _screen_to_global_position(mouse_motion.position)
+		return
+
+	if _mouse_dragging and event is InputEventMouseButton:
+		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
+			_finish_drag()
+			return
+
+	if _active_touch_index != -1 and event is InputEventScreenDrag:
+		var drag_event: InputEventScreenDrag = event as InputEventScreenDrag
+		if drag_event.index == _active_touch_index:
+			global_position = _screen_to_global_position(drag_event.position)
+			return
+
+	if _active_touch_index != -1 and event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.index == _active_touch_index and not touch_event.pressed:
+			_finish_drag()
+
+
+func _on_dropped() -> void:
+	if not _dragging:
+		return
+
+	var target_area: Area2D = _find_drop_target()
+	if target_area != null:
+		global_position = target_area.global_position
+		dropped_on_target.emit(drag_id, target_area)
+		return
+
+	if snap_back:
+		var tween: Tween = create_tween()
+		tween.set_trans(Tween.TRANS_SINE)
+		tween.set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "global_position", _origin_position, SNAP_BACK_DURATION)
+
+
+func _begin_mouse_drag() -> void:
+	_dragging = true
+	_mouse_dragging = true
+	_active_touch_index = -1
+	_drag_owner = self
+	drag_started.emit(drag_id)
+
+
+func _begin_touch_drag(touch_index: int) -> void:
+	_dragging = true
+	_mouse_dragging = false
+	_active_touch_index = touch_index
+	_drag_owner = self
+	drag_started.emit(drag_id)
+
+
+func _finish_drag() -> void:
+	if not _dragging:
+		return
+
+	_on_dropped()
+	_dragging = false
+	_mouse_dragging = false
+	_active_touch_index = -1
+	if _drag_owner == self:
+		_drag_owner = null
+	drag_ended.emit(drag_id)
+
+
+func _find_drop_target() -> Area2D:
+	var closest_target: Area2D = null
+	var closest_distance: float = INF
+
+	for area: Area2D in get_overlapping_areas():
+		if not area.is_in_group(DROP_TARGET_GROUP):
+			continue
+
+		var distance_to_target: float = global_position.distance_to(area.global_position)
+		if closest_target == null or distance_to_target < closest_distance:
+			closest_target = area
+			closest_distance = distance_to_target
+
+	return closest_target
+
+
+func _screen_to_global_position(screen_position: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
+</file>
+
+<file path="components/draggable.gd.uid">
+uid://c84nfkp2scl82
+</file>
+
+<file path="components/drop_zone.gd">
+extends Area2D
+
+const DROP_TARGET_GROUP: StringName = &"drop_target"
+
+@export var zone_id: String = ""
+
+
+func _ready() -> void:
+	add_to_group(DROP_TARGET_GROUP)
+</file>
+
+<file path="components/drop_zone.gd.uid">
+uid://cwqc5pbfntlgj
+</file>
+
+<file path="components/event_chain.gd">
+extends Node
+class_name EventChain
+
+signal chain_completed
+
+@export var configured_targets: Array[NodePath] = []
+@export var configured_methods: Array[StringName] = []
+@export var configured_delays: Array[float] = []
+
+var _steps: Array[Dictionary] = []
+var _playing: bool = false
+
+
+func add_step(what: Callable, delay_after: float = 0.5) -> EventChain:
+	_steps.append(
+		{
+			"callable": what,
+			"delay_after": delay_after,
+		}
+	)
+	return self
+
+
+func clear() -> void:
+	_steps.clear()
+
+
+func play() -> void:
+	if _playing:
+		return
+
+	_playing = true
+
+	var steps_to_play: Array[Dictionary] = _steps.duplicate(true)
+	if steps_to_play.is_empty():
+		steps_to_play = _build_configured_steps()
+
+	for step: Dictionary in steps_to_play:
+		var step_callable: Callable = step.get("callable", Callable())
+		if not step_callable.is_valid():
+			push_warning("EventChain step callable invalido; step ignorado.")
+			continue
+
+		var delay_after: float = float(step.get("delay_after", 0.0))
+		step_callable.call()
+		await get_tree().create_timer(delay_after).timeout
+
+	_playing = false
+	chain_completed.emit()
+
+
+func _build_configured_steps() -> Array[Dictionary]:
+	var built_steps: Array[Dictionary] = []
+
+	for index: int in configured_targets.size():
+		if index >= configured_methods.size():
+			push_warning("EventChain configurado sem method para o step %d." % index)
+			continue
+
+		var target_path: NodePath = configured_targets[index]
+		if target_path.is_empty():
+			push_warning("EventChain configurado com target vazio no step %d." % index)
+			continue
+
+		var target_node: Node = get_node_or_null(target_path)
+		if target_node == null:
+			push_warning("EventChain nao encontrou target configurado no step %d." % index)
+			continue
+
+		var method_name: StringName = configured_methods[index]
+		if method_name == StringName():
+			push_warning("EventChain configurado com method vazio no step %d." % index)
+			continue
+
+		var delay_after: float = 0.5
+		if index < configured_delays.size():
+			delay_after = configured_delays[index]
+
+		built_steps.append(
+			{
+				"callable": Callable(target_node, method_name),
+				"delay_after": delay_after,
+			}
+		)
+
+	return built_steps
+</file>
+
+<file path="components/event_chain.gd.uid">
+uid://cq5tcp2sj6xsy
+</file>
+
+<file path="components/hotspot.gd">
+extends Area2D
+
+signal pressed(hotspot_id: String)
+
+const FEEDBACK_MODULATE: Color = Color(1.1, 1.1, 1.1, 1.0)
+
+@export var hotspot_id: String = ""
+@export var one_shot: bool = true
+@export var active: bool = true:
+	set(value):
+		active = value
+		if not active:
+			_clear_feedback_state()
+
+var _visual_parent: CanvasItem
+var _mouse_hovering: bool = false
+var _touch_hovering: bool = false
+var _active_touch_index: int = -1
+var _feedback_applied: bool = false
+var _base_parent_modulate: Color = Color.WHITE
+
+
+func _ready() -> void:
+	var parent_node: Node = get_parent()
+	if parent_node is CanvasItem:
+		_visual_parent = parent_node as CanvasItem
+
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
+	set_process_input(true)
+
+
+func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
+	if not active:
+		return
+
+	var is_mouse_press: bool = false
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		is_mouse_press = mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
+
+	var is_touch_press: bool = false
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		is_touch_press = touch_event.pressed
+		if touch_event.pressed:
+			_active_touch_index = touch_event.index
+			_touch_hovering = true
+			_refresh_feedback()
+
+	if not is_mouse_press and not is_touch_press:
+		return
+
+	pressed.emit(hotspot_id)
+
+	if one_shot:
+		active = false
+
+
+func _input(event: InputEvent) -> void:
+	if _active_touch_index == -1:
+		return
+
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.index != _active_touch_index:
+			return
+
+		if not touch_event.pressed:
+			_touch_hovering = false
+			_active_touch_index = -1
+			_refresh_feedback()
+			return
+
+	if event is InputEventScreenDrag:
+		var drag_event: InputEventScreenDrag = event as InputEventScreenDrag
+		if drag_event.index != _active_touch_index:
+			return
+
+		_touch_hovering = _contains_global_point(drag_event.position)
+		_refresh_feedback()
+
+
+func _on_mouse_entered() -> void:
+	if not active:
+		return
+	_mouse_hovering = true
+	_refresh_feedback()
+
+
+func _on_mouse_exited() -> void:
+	_mouse_hovering = false
+	_refresh_feedback()
+
+
+func _refresh_feedback() -> void:
+	if _visual_parent == null:
+		return
+
+	var should_highlight: bool = active and (_mouse_hovering or _touch_hovering)
+	if should_highlight:
+		if _feedback_applied:
+			return
+
+		_base_parent_modulate = _visual_parent.modulate
+		_visual_parent.modulate = Color(
+			_base_parent_modulate.r * FEEDBACK_MODULATE.r,
+			_base_parent_modulate.g * FEEDBACK_MODULATE.g,
+			_base_parent_modulate.b * FEEDBACK_MODULATE.b,
+			_base_parent_modulate.a * FEEDBACK_MODULATE.a
+		)
+		_feedback_applied = true
+		return
+
+	if not _feedback_applied:
+		return
+
+	_visual_parent.modulate = _base_parent_modulate
+	_feedback_applied = false
+
+
+func _clear_feedback_state() -> void:
+	_mouse_hovering = false
+	_touch_hovering = false
+	_active_touch_index = -1
+	_refresh_feedback()
+
+
+func _contains_global_point(point: Vector2) -> bool:
+	var query: PhysicsPointQueryParameters2D = PhysicsPointQueryParameters2D.new()
+	query.position = point
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+	query.collision_mask = collision_layer
+
+	var results: Array[Dictionary] = get_world_2d().direct_space_state.intersect_point(query)
+	for result: Dictionary in results:
+		if result.get("collider") == self:
+			return true
+
+	return false
+</file>
+
+<file path="components/hotspot.gd.uid">
+uid://vjccydmum12g
+</file>
+
+<file path="components/protagonist_actor.gd">
+extends Node2D
+
+const ANIMATION_IDLE: StringName = &"idle"
+const ANIMATION_WALKING: StringName = &"walking"
+
+signal destination_reached(destination: Vector2)
+
+@export var move_speed: float = 340.0
+@export var arrival_threshold: float = 10.0
+@export var margin_top: float = 108.0
+@export var margin_bottom: float = 72.0
+@export var margin_left: float = 32.0
+@export var margin_right: float = 32.0
+
+@onready var _sprite: AnimatedSprite2D = $KaySprite
+@onready var _carried_flower: Sprite2D = $Position2D/Flower
+
+var _destination: Vector2 = Vector2.ZERO
+var _is_moving: bool = false
+var _manual_input_enabled: bool = true
+var _ignore_next_press: bool = false
+
+
+func _ready() -> void:
+	set_process_input(true)
+	set_physics_process(true)
+	_destination = global_position
+	hide_carried_flower()
+	_play_animation(ANIMATION_IDLE)
+
+
+func _input(event: InputEvent) -> void:
+	if not _manual_input_enabled:
+		return
+
+	var press_position: Variant = _extract_press_position(event)
+	if press_position == null:
+		return
+
+	if _ignore_next_press:
+		_ignore_next_press = false
+		return
+
+	move_to_screen_position(press_position as Vector2)
+
+
+func _physics_process(delta: float) -> void:
+	if not _is_moving:
+		return
+
+	_update_facing_direction(_destination - global_position)
+	global_position = global_position.move_toward(_destination, move_speed * delta)
+
+	if global_position.distance_to(_destination) > arrival_threshold:
+		return
+
+	global_position = _destination
+	_complete_movement(true)
+
+
+func move_to_screen_position(screen_position: Vector2) -> void:
+	move_to_global_position(_screen_to_global_position(screen_position))
+
+
+func move_to_global_position(target_position: Vector2) -> void:
+	_destination = _clamp_to_margins(target_position)
+	if global_position.distance_to(_destination) <= arrival_threshold:
+		global_position = _destination
+		_complete_movement(true)
+		return
+
+	_is_moving = true
+	_update_facing_direction(_destination - global_position)
+	_play_animation(ANIMATION_WALKING)
+
+
+func stop() -> void:
+	_complete_movement(false)
+
+
+func set_manual_input_enabled(is_enabled: bool) -> void:
+	_manual_input_enabled = is_enabled
+
+
+func consume_next_press() -> void:
+	_ignore_next_press = true
+
+
+func show_carried_flower(flower_texture: Texture2D, carried_scale: Vector2 = Vector2.ONE) -> void:
+	if _carried_flower == null:
+		return
+
+	_carried_flower.texture = flower_texture
+	_carried_flower.hframes = 1
+	_carried_flower.vframes = 1
+	_carried_flower.scale = carried_scale
+	_carried_flower.visible = flower_texture != null
+
+
+func hide_carried_flower() -> void:
+	if _carried_flower == null:
+		return
+
+	_carried_flower.visible = false
+
+
+func _complete_movement(emit_arrival: bool) -> void:
+	var reached_destination: Vector2 = _destination
+	_destination = global_position
+	_is_moving = false
+	_play_animation(ANIMATION_IDLE)
+	if emit_arrival:
+		destination_reached.emit(reached_destination)
+
+
+func is_moving() -> bool:
+	return _is_moving
+
+
+func _clamp_to_margins(target_position: Vector2) -> Vector2:
+	var viewport_rect: Rect2 = get_viewport_rect()
+	var top_left: Vector2 = _screen_to_global_position(viewport_rect.position)
+	var bottom_right: Vector2 = _screen_to_global_position(viewport_rect.position + viewport_rect.size)
+	var min_bounds: Vector2 = Vector2(
+		minf(top_left.x, bottom_right.x) + margin_left,
+		minf(top_left.y, bottom_right.y) + margin_top
+	)
+	var max_bounds: Vector2 = Vector2(
+		maxf(top_left.x, bottom_right.x) - margin_right,
+		maxf(top_left.y, bottom_right.y) - margin_bottom
+	)
+	return Vector2(
+		clampf(target_position.x, min_bounds.x, max_bounds.x),
+		clampf(target_position.y, min_bounds.y, max_bounds.y)
+	)
+
+
+func _screen_to_global_position(screen_position: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
+
+
+func _extract_press_position(event: InputEvent) -> Variant:
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			return mouse_event.position
+
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.pressed:
+			return touch_event.position
+
+	return null
+
+
+func _update_facing_direction(direction: Vector2) -> void:
+	if absf(direction.x) <= 0.01:
+		return
+
+	scale.x = absf(scale.x) * signf(direction.x)
+
+
+func _play_animation(animation_name: StringName) -> void:
+	if _sprite == null:
+		return
+
+	if not _sprite.sprite_frames.has_animation(animation_name):
+		push_warning("ProtagonistActor nao encontrou animacao '%s'." % String(animation_name))
+		return
+
+	if _sprite.animation == animation_name and _sprite.is_playing():
+		return
+
+	_sprite.play(animation_name)
+</file>
+
+<file path="components/protagonist_actor.gd.uid">
+uid://bfjxusln2e1fq
+</file>
+
+<file path="components/revealer.gd">
+extends Node
+
+signal revealed
+
+@export var reveal_duration: float = 0.6
+@export var hidden_color: Color = Color(0.15, 0.15, 0.15, 1.0)
+@export var revealed_color: Color = Color.WHITE
+@export var start_hidden: bool = true
+
+var _visual_parent: CanvasItem
+var _active_tween: Tween
+var _is_revealed: bool = false
+
+
+func _ready() -> void:
+	var parent_node: Node = get_parent()
+	if parent_node is CanvasItem:
+		_visual_parent = parent_node as CanvasItem
+	else:
+		push_warning("Revealer precisa ser filho de um CanvasItem.")
+		return
+
+	if start_hidden:
+		_visual_parent.modulate = hidden_color
+		_is_revealed = false
+		return
+
+	_is_revealed = true
+
+
+func reveal() -> void:
+	if _visual_parent == null or _is_revealed:
+		return
+
+	if _active_tween != null:
+		return
+
+	var tween: Tween = create_tween()
+	_active_tween = tween
+	tween.tween_property(_visual_parent, "modulate", revealed_color, reveal_duration)
+	tween.finished.connect(_on_reveal_finished)
+
+
+func _on_reveal_finished() -> void:
+	if _visual_parent != null:
+		_visual_parent.modulate = revealed_color
+
+	_active_tween = null
+	_is_revealed = true
+	revealed.emit()
+
+
+func hide_visual() -> void:
+	if _visual_parent == null:
+		return
+
+	_stop_active_tween()
+	_is_revealed = false
+
+	var tween: Tween = create_tween()
+	_active_tween = tween
+	tween.tween_property(_visual_parent, "modulate", hidden_color, reveal_duration)
+	tween.finished.connect(_on_hide_finished)
+
+
+func reveal_instant() -> void:
+	if _visual_parent == null:
+		return
+
+	_stop_active_tween()
+	_visual_parent.modulate = revealed_color
+	_is_revealed = true
+
+
+func _on_hide_finished() -> void:
+	if _visual_parent != null:
+		_visual_parent.modulate = hidden_color
+
+	_active_tween = null
+
+
+func _stop_active_tween() -> void:
+	if _active_tween == null:
+		return
+
+	_active_tween.kill()
+	_active_tween = null
+</file>
+
+<file path="components/revealer.gd.uid">
+uid://tx2y8ydlan3x
+</file>
+
+<file path="core/audio_manager.gd">
+extends Node
+
+const TRACKS: Dictionary = {
+	"main": preload("res://assets/audio/EndOfBeginninV1.ogg"),
+	"hub_room_1": preload("res://assets/audio/EndOfBeginninV1.ogg"),
+	"room_1": preload("res://assets/audio/EndOfBeginninV1.ogg"),
+	"room_2": preload("res://assets/audio/EndOfBeginninV2.ogg"),
+	"room_3": preload("res://assets/audio/EndOfBeginninV3.ogg"),
+	"finale": preload("res://assets/audio/GooGooDools.ogg"),
+	"room_4": preload("res://assets/audio/GooGooDools.ogg"),
+}
+const BGM_FADE_DURATION: float = 0.5
+const BGM_MUTED_VOLUME_DB: float = -80.0
+const BGM_DEFAULT_VOLUME_DB: float = 0.0
+
+var bgm_player: AudioStreamPlayer
+var sfx_player: AudioStreamPlayer
+var _bgm_tween: Tween
+var _bgm_transition_in_progress: bool = false
+var _current_bgm_track_key: String = ""
+var _requested_bgm_track_key: String = ""
+var _stop_bgm_requested: bool = false
+var _stop_bgm_fade_duration: float = BGM_FADE_DURATION
+var _bgm_transport_position: float = 0.0
+
+
+func _ready() -> void:
+	_ensure_players()
+	_configure_bgm_tracks()
+
+
+func _process(delta: float) -> void:
+	if bgm_player != null and bgm_player.playing:
+		_bgm_transport_position += delta
+
+
+func _ensure_players() -> void:
+	if bgm_player == null:
+		bgm_player = AudioStreamPlayer.new()
+		bgm_player.name = "bgm_player"
+		bgm_player.volume_db = BGM_DEFAULT_VOLUME_DB
+		add_child(bgm_player)
+
+	if sfx_player == null:
+		sfx_player = AudioStreamPlayer.new()
+		sfx_player.name = "sfx_player"
+		add_child(sfx_player)
+
+
+func play_bgm(track_key: String) -> void:
+	_ensure_players()
+	_configure_bgm_tracks()
+
+	if not TRACKS.has(track_key):
+		push_warning("AudioManager.play_bgm ignorado: track_key inexistente: %s" % track_key)
+		return
+
+	var track: AudioStream = TRACKS.get(track_key)
+	if track == null:
+		push_warning("AudioManager.play_bgm ignorado: track nula para key %s" % track_key)
+		return
+
+	if _requested_bgm_track_key == track_key:
+		return
+
+	if _current_bgm_track_key == track_key and bgm_player.playing and not _stop_bgm_requested:
+		return
+
+	_requested_bgm_track_key = track_key
+	_stop_bgm_requested = false
+	_process_bgm_requests()
+
+
+func play_sfx(sfx: AudioStream) -> void:
+	_ensure_players()
+	sfx_player.stream = sfx
+	sfx_player.play()
+
+
+func stop_bgm(fade_duration: float = 0.5) -> void:
+	_ensure_players()
+
+	if not bgm_player.playing and _current_bgm_track_key == "" and _requested_bgm_track_key == "":
+		return
+
+	_requested_bgm_track_key = ""
+	_stop_bgm_requested = true
+	_stop_bgm_fade_duration = max(fade_duration, 0.0)
+	_process_bgm_requests()
+
+
+func set_bgm_volume(target_volume_db: float, fade_duration: float = 0.5) -> void:
+	_ensure_players()
+
+	if not bgm_player.playing:
+		return
+
+	var clamped_duration: float = max(fade_duration, 0.0)
+	if clamped_duration <= 0.0:
+		bgm_player.volume_db = target_volume_db
+		return
+
+	if _bgm_tween != null:
+		_bgm_tween.kill()
+		_bgm_tween = null
+
+	_bgm_tween = create_tween()
+	_bgm_tween.tween_property(bgm_player, "volume_db", target_volume_db, clamped_duration)
+	await _bgm_tween.finished
+	_bgm_tween = null
+
+
+func _process_bgm_requests() -> void:
+	if _bgm_transition_in_progress:
+		return
+
+	_bgm_transition_in_progress = true
+
+	while true:
+		if _stop_bgm_requested:
+			var fade_duration: float = _stop_bgm_fade_duration
+			_stop_bgm_requested = false
+
+			if bgm_player.playing:
+				await _fade_bgm_volume_to(BGM_MUTED_VOLUME_DB, fade_duration)
+				bgm_player.stop()
+
+			bgm_player.stream = null
+			bgm_player.volume_db = BGM_DEFAULT_VOLUME_DB
+			_current_bgm_track_key = ""
+
+			if _requested_bgm_track_key != "":
+				continue
+
+			break
+
+		var next_track_key: String = _requested_bgm_track_key
+		_requested_bgm_track_key = ""
+
+		if next_track_key == "":
+			break
+
+		var next_track: AudioStream = TRACKS.get(next_track_key)
+		if next_track == null:
+			push_warning("AudioManager.play_bgm ignorado: track nula para key %s" % next_track_key)
+			continue
+
+		var next_track_seek_position: float = 0.0
+		if next_track.get_length() > 0.0:
+			next_track_seek_position = fposmod(_bgm_transport_position, next_track.get_length())
+
+		if _current_bgm_track_key == next_track_key and bgm_player.playing:
+			bgm_player.volume_db = BGM_DEFAULT_VOLUME_DB
+			continue
+
+		if bgm_player.playing:
+			await _fade_bgm_volume_to(BGM_MUTED_VOLUME_DB, BGM_FADE_DURATION)
+			bgm_player.stop()
+
+		bgm_player.stream = next_track
+		bgm_player.volume_db = BGM_MUTED_VOLUME_DB
+		bgm_player.play(next_track_seek_position)
+		_current_bgm_track_key = next_track_key
+
+		await _fade_bgm_volume_to(BGM_DEFAULT_VOLUME_DB, BGM_FADE_DURATION)
+
+		if _stop_bgm_requested:
+			continue
+
+		if _requested_bgm_track_key != "" and _requested_bgm_track_key != _current_bgm_track_key:
+			continue
+
+		break
+
+	_bgm_transition_in_progress = false
+
+
+func _fade_bgm_volume_to(target_volume_db: float, duration: float) -> void:
+	if duration <= 0.0:
+		bgm_player.volume_db = target_volume_db
+		return
+
+	_bgm_tween = create_tween()
+	_bgm_tween.tween_property(bgm_player, "volume_db", target_volume_db, duration)
+	await _bgm_tween.finished
+	_bgm_tween = null
+
+
+func _configure_bgm_tracks() -> void:
+	for track_variant in TRACKS.values():
+		var track: AudioStream = track_variant
+		var ogg_track: AudioStreamOggVorbis = track as AudioStreamOggVorbis
+		if ogg_track == null:
+			continue
+
+		ogg_track.loop = true
+</file>
+
+<file path="core/audio_manager.gd.uid">
+uid://dajvbpmcpyt10
+</file>
+
+<file path="core/game_manager_test.gd">
+extends Node
+
+class HubLoopTestRunner extends Node:
+	const ROOM_COMPLETE_DELAY: float = 0.15
+	const STAGE_TIMEOUT_SECONDS: float = 4.0
+	const OVERLAY_LAYER: int = 200
+
+	var target_room_id: int = 1
+	var _stage: String = "idle"
+	var _timeout_timer: Timer
+	var _status_label: Label
+	var _details_label: Label
+
+	func _ready() -> void:
+		name = "HubLoopTestRunner"
+		_build_overlay()
+		_build_timeout_timer()
+		GameManager.transition_started.connect(_on_transition_started)
+		GameManager.transition_finished.connect(_on_transition_finished)
+		GameManager.rooms_completed.clear()
+		_stage = "go_to_hub"
+		_set_status("Teste: carregando hub...")
+		_set_details("Loop esperado: hub -> sala %d -> hub." % target_room_id)
+		_arm_timeout()
+		GameManager.return_to_hub()
+
+	func _build_overlay() -> void:
+		var overlay_layer: CanvasLayer = CanvasLayer.new()
+		overlay_layer.layer = OVERLAY_LAYER
+		add_child(overlay_layer)
+
+		var background: ColorRect = ColorRect.new()
+		background.color = Color(0.0, 0.0, 0.0, 0.72)
+		background.offset_left = 16.0
+		background.offset_top = 16.0
+		background.offset_right = 524.0
+		background.offset_bottom = 156.0
+		overlay_layer.add_child(background)
+
+		_status_label = Label.new()
+		_status_label.offset_left = 32.0
+		_status_label.offset_top = 32.0
+		_status_label.offset_right = 508.0
+		_status_label.offset_bottom = 78.0
+		_status_label.add_theme_font_size_override("font_size", 24)
+		overlay_layer.add_child(_status_label)
+
+		_details_label = Label.new()
+		_details_label.offset_left = 32.0
+		_details_label.offset_top = 84.0
+		_details_label.offset_right = 508.0
+		_details_label.offset_bottom = 140.0
+		_details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_details_label.add_theme_font_size_override("font_size", 16)
+		overlay_layer.add_child(_details_label)
+
+	func _build_timeout_timer() -> void:
+		_timeout_timer = Timer.new()
+		_timeout_timer.one_shot = true
+		_timeout_timer.wait_time = STAGE_TIMEOUT_SECONDS
+		_timeout_timer.timeout.connect(_on_stage_timeout)
+		add_child(_timeout_timer)
+
+	func _arm_timeout() -> void:
+		if _timeout_timer == null:
+			return
+		_timeout_timer.start()
+
+	func _on_transition_started() -> void:
+		_set_details("Transicao iniciada na etapa '%s'." % _stage)
+
+	func _on_transition_finished() -> void:
+		if _timeout_timer != null:
+			_timeout_timer.stop()
+
+		match _stage:
+			"go_to_hub":
+				if GameManager.current_room != 0 or GameManager.state != GameManager.State.PLAYING:
+					_fail("Hub invalido: current_room=%s, state=%s." % [GameManager.current_room, _state_to_string(GameManager.state)])
+					return
+				_stage = "go_to_room"
+				_set_status("Teste: hub OK. Abrindo sala %d..." % target_room_id)
+				_set_details("Hub carregado com current_room=0. Iniciando transicao para a sala.")
+				_arm_timeout()
+				GameManager.transition_to_room(target_room_id)
+			"go_to_room":
+				if GameManager.current_room != target_room_id or GameManager.state != GameManager.State.PLAYING:
+					_fail("Sala invalida: current_room=%s, state=%s." % [GameManager.current_room, _state_to_string(GameManager.state)])
+					return
+				_stage = "return_to_hub"
+				_set_status("Teste: sala %d OK. Concluindo sala..." % target_room_id)
+				_set_details("Chamando GameManager.complete_room(%d)." % target_room_id)
+				_arm_timeout()
+				get_tree().create_timer(ROOM_COMPLETE_DELAY).timeout.connect(_complete_current_room, CONNECT_ONE_SHOT)
+			"return_to_hub":
+				_validate_return_to_hub()
+
+	func _complete_current_room() -> void:
+		if _stage != "return_to_hub":
+			return
+		GameManager.complete_room(target_room_id)
+
+	func _validate_return_to_hub() -> void:
+		var current_room_matches: bool = GameManager.current_room == 0
+		var state_matches: bool = GameManager.state == GameManager.State.PLAYING
+		var room_completed: bool = GameManager.rooms_completed.get(target_room_id, false)
+		var room_locked_after_completion: bool = not GameManager.can_enter_room(target_room_id)
+		var expected_next_room: int = 0
+		if target_room_id < GameManager.ROOM_SCENES.size():
+			expected_next_room = target_room_id + 1
+		var next_room_matches: bool = GameManager.get_next_room_to_unlock() == expected_next_room
+		var next_room_unlocked: bool = expected_next_room == 0 or GameManager.can_enter_room(expected_next_room)
+
+		if current_room_matches and state_matches and room_completed and room_locked_after_completion and next_room_matches and next_room_unlocked:
+			_stage = "done"
+			_set_status("Teste OK: loop hub -> sala -> hub validado.")
+			_set_details(
+				"current_room=0, rooms_completed[%d]=true, proxima_sala=%d."
+				% [target_room_id, expected_next_room]
+			)
+			return
+
+		_fail(
+			"Retorno ao hub invalido: current_room=%s, state=%s, completed=%s, next=%s."
+			% [
+				GameManager.current_room,
+				_state_to_string(GameManager.state),
+				room_completed,
+				GameManager.get_next_room_to_unlock(),
+			]
+		)
+
+	func _on_stage_timeout() -> void:
+		_fail("Timeout na etapa '%s'." % _stage)
+
+	func _fail(message: String) -> void:
+		_stage = "failed"
+		_set_status("Teste FALHOU: loop hub -> sala -> hub.")
+		_set_details(message)
+		push_error(message)
+
+	func _set_status(text: String) -> void:
+		if _status_label != null:
+			_status_label.text = text
+
+	func _set_details(text: String) -> void:
+		if _details_label != null:
+			_details_label.text = text
+
+	func _state_to_string(value: int) -> String:
+		match value:
+			GameManager.State.PLAYING:
+				return "PLAYING"
+			GameManager.State.TRANSITIONING:
+				return "TRANSITIONING"
+			_:
+				return "UNKNOWN(%s)" % value
+
+
+class Room1FlowTestRunner extends Node:
+	const STAGE_TIMEOUT_SECONDS: float = 4.0
+	const OVERLAY_LAYER: int = 200
+	const FLOWERS: Array[Dictionary] = [
+		{
+			"id": "hibisco",
+			"flower_path": NodePath("CanvasLayer/FlowerOrigin/Hibisco"),
+			"hotspot_path": NodePath("CanvasLayer/FlowerTargets/TargetHibisco/Hotspot"),
+			"approach_path": NodePath("CanvasLayer/FlowerTargets/TargetHibisco/ApproachMarker"),
+			"hint_path": NodePath("CanvasLayer/TargetHints/HintHibisco"),
+			"layer_path": NodePath("CanvasLayer/Highlighter1Hibisco"),
+		},
+		{
+			"id": "rosa",
+			"flower_path": NodePath("CanvasLayer/FlowerOrigin/RosasVermelhas"),
+			"hotspot_path": NodePath("CanvasLayer/FlowerTargets/TargetRosa/Hotspot"),
+			"approach_path": NodePath("CanvasLayer/FlowerTargets/TargetRosa/ApproachMarker"),
+			"hint_path": NodePath("CanvasLayer/TargetHints/HintRosasVermelhas"),
+			"layer_path": NodePath("CanvasLayer/Highlighter2RosasVermelhas"),
+		},
+		{
+			"id": "lirio",
+			"flower_path": NodePath("CanvasLayer/FlowerOrigin/Lirios"),
+			"hotspot_path": NodePath("CanvasLayer/FlowerTargets/TargetLirio/Hotspot"),
+			"approach_path": NodePath("CanvasLayer/FlowerTargets/TargetLirio/ApproachMarker"),
+			"hint_path": NodePath("CanvasLayer/TargetHints/HintLirios"),
+			"layer_path": NodePath("CanvasLayer/Highlighter3Lirios"),
+		},
+		{
+			"id": "girassol",
+			"flower_path": NodePath("CanvasLayer/FlowerOrigin/Girassois"),
+			"hotspot_path": NodePath("CanvasLayer/FlowerTargets/TargetGirassol/Hotspot"),
+			"approach_path": NodePath("CanvasLayer/FlowerTargets/TargetGirassol/ApproachMarker"),
+			"hint_path": NodePath("CanvasLayer/TargetHints/HintGirassois"),
+			"layer_path": NodePath("CanvasLayer/Highlighter4Girassois"),
+		},
+	]
+
+	var _status_label: Label
+	var _details_label: Label
+	var _room_scene: Node
+	var _active_flower_index: int = -1
+	var _expected_restore_count: int = 0
+
+	func _ready() -> void:
+		name = "Room1FlowTestRunner"
+		_build_overlay()
+		call_deferred("_run_test")
+
+	func _run_test() -> void:
+		GameManager.rooms_completed.clear()
+		GameManager.current_room = 0
+		_set_status("Teste Sala 1: abrindo cena...")
+		_set_details("Validando fluxo completo da Sala 1 em headless.")
+		GameManager.transition_to_room(1)
+
+		if not await _wait_until(Callable(self, "_is_room_1_ready"), STAGE_TIMEOUT_SECONDS, "Sala 1 nao carregou corretamente."):
+			return
+
+		_room_scene = get_tree().current_scene
+		if not _validate_initial_state():
+			return
+
+		for flower_index: int in FLOWERS.size():
+			_active_flower_index = flower_index
+			_expected_restore_count = flower_index + 1
+			_set_status("Teste Sala 1: flor %d/4" % _expected_restore_count)
+			_set_details("Acionando hotspot '%s' e aguardando centro -> alvo." % FLOWERS[flower_index]["id"])
+
+			if not _validate_turn_state(flower_index):
+				return
+
+			var hotspot: Area2D = _room_scene.get_node(FLOWERS[flower_index]["hotspot_path"]) as Area2D
+			hotspot.pressed.emit(FLOWERS[flower_index]["id"])
+
+			if not await _wait_until(Callable(self, "_is_active_hint_visible"), STAGE_TIMEOUT_SECONDS, "Hint da flor '%s' nao apareceu." % FLOWERS[flower_index]["id"]):
+				return
+			if not await _wait_until(Callable(self, "_is_protagonist_at_center"), STAGE_TIMEOUT_SECONDS, "Protagonista nao alcancou o centro para '%s'." % FLOWERS[flower_index]["id"]):
+				return
+			if not await _wait_until(Callable(self, "_is_protagonist_at_target"), STAGE_TIMEOUT_SECONDS, "Protagonista nao alcancou o alvo para '%s'." % FLOWERS[flower_index]["id"]):
+				return
+			if not await _wait_until(Callable(self, "_is_restore_count_reached"), STAGE_TIMEOUT_SECONDS, "Entrega da flor '%s' nao concluiu." % FLOWERS[flower_index]["id"]):
+				return
+			if not await _wait_until(Callable(self, "_is_active_layer_revealed"), STAGE_TIMEOUT_SECONDS, "Layer da flor '%s' nao terminou de revelar." % FLOWERS[flower_index]["id"]):
+				return
+			if not _validate_post_restore_state(flower_index):
+				return
+
+		_set_status("Teste Sala 1: validando finale...")
+		_set_details("Aguardando GardenSurprise, Presente, Furao e retorno ao hub.")
+
+		if not await _wait_until(Callable(self, "_is_background_surprise"), STAGE_TIMEOUT_SECONDS, "Background nao entrou na animacao surprise."):
+			return
+		if not await _wait_until(Callable(self, "_is_center_hidden"), STAGE_TIMEOUT_SECONDS, "Center nao foi ocultado no finale."):
+			return
+		if not await _wait_until(Callable(self, "_is_present_visible"), STAGE_TIMEOUT_SECONDS, "Presente nao apareceu com fade."):
+			return
+		if not await _wait_until(Callable(self, "_is_furao_visible"), STAGE_TIMEOUT_SECONDS, "Furao nao apareceu no finale."):
+			return
+		if not await _wait_until(Callable(self, "_is_hub_ready_after_room_1"), STAGE_TIMEOUT_SECONDS * 2.0, "Nao retornou ao hub com a Sala 2 desbloqueada."):
+			return
+
+		_finish_success("Teste OK: Sala 1 completa do primeiro hotspot ao retorno ao hub.")
+
+	func _build_overlay() -> void:
+		var overlay_layer: CanvasLayer = CanvasLayer.new()
+		overlay_layer.layer = OVERLAY_LAYER
+		add_child(overlay_layer)
+
+		var background: ColorRect = ColorRect.new()
+		background.color = Color(0.0, 0.0, 0.0, 0.72)
+		background.offset_left = 16.0
+		background.offset_top = 16.0
+		background.offset_right = 524.0
+		background.offset_bottom = 156.0
+		overlay_layer.add_child(background)
+
+		_status_label = Label.new()
+		_status_label.offset_left = 32.0
+		_status_label.offset_top = 32.0
+		_status_label.offset_right = 508.0
+		_status_label.offset_bottom = 78.0
+		_status_label.add_theme_font_size_override("font_size", 24)
+		overlay_layer.add_child(_status_label)
+
+		_details_label = Label.new()
+		_details_label.offset_left = 32.0
+		_details_label.offset_top = 84.0
+		_details_label.offset_right = 508.0
+		_details_label.offset_bottom = 140.0
+		_details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_details_label.add_theme_font_size_override("font_size", 16)
+		overlay_layer.add_child(_details_label)
+
+	func _wait_until(condition: Callable, timeout_seconds: float, failure_message: String) -> bool:
+		var deadline_ms: int = Time.get_ticks_msec() + int(timeout_seconds * 1000.0)
+		while Time.get_ticks_msec() <= deadline_ms:
+			if condition.call():
+				return true
+			await get_tree().process_frame
+		_finish_failure(failure_message)
+		return false
+
+	func _validate_initial_state() -> bool:
+		if int(_room_scene.get("_flowers_restored")) != 0:
+			_finish_failure("Estado inicial invalido: _flowers_restored != 0.")
+			return false
+		if int(_room_scene.get("_current_flower_index")) != 0:
+			_finish_failure("Estado inicial invalido: _current_flower_index != 0.")
+			return false
+		return _validate_turn_state(0)
+
+	func _validate_turn_state(expected_active_index: int) -> bool:
+		for flower_index: int in FLOWERS.size():
+			var flower: CanvasItem = _room_scene.get_node(FLOWERS[flower_index]["flower_path"]) as CanvasItem
+			var hotspot: Area2D = _room_scene.get_node(FLOWERS[flower_index]["hotspot_path"]) as Area2D
+			var should_be_visible: bool = flower_index == expected_active_index
+			var should_be_active: bool = flower_index == expected_active_index
+			if flower.visible != should_be_visible:
+				_finish_failure("Flor visivel incorreta no turno %d." % expected_active_index)
+				return false
+			if bool(hotspot.get("active")) != should_be_active:
+				_finish_failure("Hotspot ativo incorreto no turno %d." % expected_active_index)
+				return false
+		return true
+
+	func _validate_post_restore_state(restored_index: int) -> bool:
+		var active_hint: CanvasItem = _room_scene.get_node(FLOWERS[restored_index]["hint_path"]) as CanvasItem
+		var restored_layer: CanvasItem = _room_scene.get_node(FLOWERS[restored_index]["layer_path"]) as CanvasItem
+		if active_hint.visible:
+			_finish_failure("Hint da flor '%s' permaneceu visivel apos a entrega." % FLOWERS[restored_index]["id"])
+			return false
+		if restored_layer.modulate.a < 0.95:
+			_finish_failure("Layer da flor '%s' nao foi revelada." % FLOWERS[restored_index]["id"])
+			return false
+		if restored_index + 1 < FLOWERS.size():
+			return _validate_turn_state(restored_index + 1)
+		for flower_data: Dictionary in FLOWERS:
+			var hotspot: Area2D = _room_scene.get_node(flower_data["hotspot_path"]) as Area2D
+			if bool(hotspot.get("active")):
+				_finish_failure("Nenhum hotspot deveria permanecer ativo apos a quarta entrega.")
+				return false
+		return true
+
+	func _is_room_1_ready() -> bool:
+		var current_scene: Node = get_tree().current_scene
+		return current_scene != null and current_scene.scene_file_path == GameManager.ROOM_SCENES[1] and GameManager.current_room == 1 and GameManager.state == GameManager.State.PLAYING
+
+	func _is_active_hint_visible() -> bool:
+		var hint: CanvasItem = _room_scene.get_node(FLOWERS[_active_flower_index]["hint_path"]) as CanvasItem
+		return hint.visible
+
+	func _is_protagonist_at_center() -> bool:
+		var protagonist: Node2D = _room_scene.get_node("CanvasLayer/Protagonist") as Node2D
+		var center: Node2D = _room_scene.get_node("CanvasLayer/FlowerOrigin") as Node2D
+		return protagonist.global_position.distance_to(center.global_position) <= 1.0
+
+	func _is_protagonist_at_target() -> bool:
+		var protagonist: Node2D = _room_scene.get_node("CanvasLayer/Protagonist") as Node2D
+		var target: Node2D = _room_scene.get_node(FLOWERS[_active_flower_index]["approach_path"]) as Node2D
+		return protagonist.global_position.distance_to(target.global_position) <= 1.0
+
+	func _is_restore_count_reached() -> bool:
+		return int(_room_scene.get("_flowers_restored")) == _expected_restore_count
+
+	func _is_active_layer_revealed() -> bool:
+		var layer: CanvasItem = _room_scene.get_node(FLOWERS[_active_flower_index]["layer_path"]) as CanvasItem
+		return layer.modulate.a >= 0.95
+
+	func _is_background_surprise() -> bool:
+		var background: AnimatedSprite2D = _room_scene.get_node("CanvasLayer/Background") as AnimatedSprite2D
+		return background.animation == &"surprise"
+
+	func _is_center_hidden() -> bool:
+		var center: CanvasItem = _room_scene.get_node("CanvasLayer/Center") as CanvasItem
+		return not center.visible
+
+	func _is_present_visible() -> bool:
+		var present: Sprite2D = _room_scene.get_node("CanvasLayer/Presente") as Sprite2D
+		return present.modulate.a >= 0.95
+
+	func _is_furao_visible() -> bool:
+		var furao: Node2D = _room_scene.get_node("CanvasLayer/Furao") as Node2D
+		return furao.visible and absf(furao.scale.x - 0.6) <= 0.05 and absf(furao.scale.y - 0.6) <= 0.05
+
+	func _is_hub_ready_after_room_1() -> bool:
+		var current_scene: Node = get_tree().current_scene
+		return current_scene != null and current_scene.scene_file_path == GameManager.MAIN_MENU_SCENE_PATH and GameManager.current_room == 0 and GameManager.state == GameManager.State.PLAYING and GameManager.rooms_completed.get(1, false) and GameManager.get_next_room_to_unlock() == 2 and not GameManager.can_enter_room(1) and GameManager.can_enter_room(2)
+
+	func _finish_success(message: String) -> void:
+		_set_status("Teste OK: fluxo da Sala 1 validado.")
+		_set_details(message)
+		print("ROOM1_FLOW_TEST: PASS | %s" % message)
+		if DisplayServer.get_name() == "headless":
+			get_tree().quit(0)
+
+	func _finish_failure(message: String) -> void:
+		_set_status("Teste FALHOU: fluxo da Sala 1.")
+		_set_details(message)
+		print("ROOM1_FLOW_TEST: FAIL | %s" % message)
+		push_error(message)
+		if DisplayServer.get_name() == "headless":
+			get_tree().quit(1)
+
+	func _set_status(text: String) -> void:
+		if _status_label != null:
+			_status_label.text = text
+
+	func _set_details(text: String) -> void:
+		if _details_label != null:
+			_details_label.text = text
+
+@export var auto_start_transition: bool = false
+@export var auto_run_hub_loop_test: bool = false
+@export var auto_run_room_1_flow_test: bool = false
+@export var target_room_id: int = 1
+@export var expected_room_id: int = 0
+
+@onready var _status_label: Label = get_node_or_null("CanvasLayer/StatusLabel") as Label
+
+
+func _ready() -> void:
+	var user_args: PackedStringArray = OS.get_cmdline_user_args()
+	if user_args.has("--room1-flow-test"):
+		auto_run_room_1_flow_test = true
+
+	if auto_run_room_1_flow_test:
+		_start_room_1_flow_test()
+		return
+
+	if auto_run_hub_loop_test:
+		_start_hub_loop_test()
+		return
+
+	if auto_start_transition:
+		_set_status("Chamando GameManager.transition_to_room(%d)..." % target_room_id)
+		GameManager.transition_started.connect(_on_transition_started)
+		GameManager.transition_to_room(target_room_id)
+		return
+
+	if expected_room_id > 0:
+		if GameManager.state == GameManager.State.TRANSITIONING:
+			_set_status("Aguardando fade finalizar...")
+			GameManager.transition_finished.connect(_on_transition_finished)
+			return
+
+		_update_validation_status()
+		return
+
+	_set_status("Cena de teste carregada.")
+
+
+func _start_hub_loop_test() -> void:
+	var existing_runner: Node = GameManager.get_node_or_null("HubLoopTestRunner")
+	if existing_runner != null:
+		existing_runner.queue_free()
+
+	var runner: HubLoopTestRunner = HubLoopTestRunner.new()
+	runner.target_room_id = target_room_id
+	GameManager.add_child(runner)
+	_set_status("Teste do loop iniciado. O status persistira sobre as cenas.")
+
+
+func _start_room_1_flow_test() -> void:
+	var existing_hub_runner: Node = GameManager.get_node_or_null("HubLoopTestRunner")
+	if existing_hub_runner != null:
+		existing_hub_runner.queue_free()
+
+	var existing_room_runner: Node = GameManager.get_node_or_null("Room1FlowTestRunner")
+	if existing_room_runner != null:
+		existing_room_runner.queue_free()
+
+	var runner: Room1FlowTestRunner = Room1FlowTestRunner.new()
+	GameManager.add_child(runner)
+	_set_status("Teste automatizado da Sala 1 iniciado.")
+
+
+func _on_transition_started() -> void:
+	_set_status("Fade iniciado...")
+
+
+func _on_transition_finished() -> void:
+	_update_validation_status()
+
+
+func _update_validation_status() -> void:
+	var room_matches: bool = GameManager.current_room == expected_room_id
+	var state_matches: bool = GameManager.state == GameManager.State.PLAYING
+
+	if room_matches and state_matches:
+		_set_status(
+			"Teste OK: current_room=%d, state=%s."
+			% [GameManager.current_room, _state_to_string(GameManager.state)]
+		)
+		return
+
+	_set_status(
+		"Teste FALHOU: current_room=%s, state=%s."
+		% [GameManager.current_room, _state_to_string(GameManager.state)]
+	)
+
+
+func _set_status(text: String) -> void:
+	if _status_label != null:
+		_status_label.text = text
+
+
+func _state_to_string(value: int) -> String:
+	match value:
+		GameManager.State.PLAYING:
+			return "PLAYING"
+		GameManager.State.TRANSITIONING:
+			return "TRANSITIONING"
+		_:
+			return "UNKNOWN(%s)" % value
+</file>
+
+<file path="core/game_manager_test.gd.uid">
+uid://dqir1udbk6pep
+</file>
+
+<file path="core/game_manager.gd">
+extends Node
+
+enum State {
+	PLAYING,
+	TRANSITIONING,
+}
+
+const ROOM_SCENES: Dictionary = {
+	1: "res://scenes/rooms/room_1.tscn",
+	2: "res://scenes/rooms/room_2.tscn",
+	3: "res://scenes/rooms/room_3.tscn",
+	4: "res://scenes/rooms/room_4.tscn",
+}
+const MAIN_MENU_SCENE_PATH: String = "res://scenes/ui/main_menu.tscn"
+const FINAL_SCENE_PATH: String = "res://scenes/ui/final_screen.tscn"
+
+signal room_completed(room_id: int)
+signal transition_started
+signal transition_finished
+
+const TRANSITION_FADE_DURATION: float = 0.5
+
+var _fade_layer: CanvasLayer
+var _fade_rect: ColorRect
+var _scene_cache: Dictionary = {}
+var state: int = State.PLAYING
+var current_room: int = 0
+var rooms_completed: Dictionary = {}
+
+
+func _ready() -> void:
+	_fade_layer = CanvasLayer.new()
+	_fade_layer.name = "FadeLayer"
+	add_child(_fade_layer)
+
+	_fade_rect = ColorRect.new()
+	_fade_rect.name = "FadeRect"
+	_fade_rect.color = Color(0.0, 0.0, 0.0, 0.0)
+	_fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade_rect.offset_left = 0.0
+	_fade_rect.offset_top = 0.0
+	_fade_rect.offset_right = 0.0
+	_fade_rect.offset_bottom = 0.0
+	_fade_rect.z_index = 100
+	_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade_layer.add_child(_fade_rect)
+
+	_preload_available_scenes()
+	call_deferred("_sync_bgm_with_active_scene")
+
+
+func transition_to_room(room_id: int) -> void:
+	if not ROOM_SCENES.has(room_id):
+		push_warning("GameManager.transition_to_room ignorado: room_id invalido: %s" % room_id)
+		return
+
+	if state == State.TRANSITIONING:
+		push_warning("GameManager.transition_to_room ignorado: transicao ja esta em andamento.")
+		return
+
+	if current_room == 0 and not can_enter_room(room_id):
+		push_warning("GameManager.transition_to_room ignorado: room_id %s nao esta liberado a partir do hub." % room_id)
+		return
+
+	_transition_to_scene_path(ROOM_SCENES[room_id], room_id, true)
+
+
+func return_to_hub() -> void:
+	_transition_to_scene_path(MAIN_MENU_SCENE_PATH, 0, true)
+
+
+func get_next_room_to_unlock() -> int:
+	for room_index in 4:
+		var room_id: int = room_index + 1
+		if not rooms_completed.get(room_id, false):
+			return room_id
+
+	return 0
+
+
+func can_enter_room(room_id: int) -> bool:
+	if not ROOM_SCENES.has(room_id):
+		return false
+
+	if rooms_completed.get(room_id, false):
+		return false
+
+	return room_id == get_next_room_to_unlock()
+
+
+func complete_room(room_id: int) -> void:
+	if room_id != current_room:
+		push_warning("GameManager.complete_room ignorado: room_id %s nao corresponde a current_room %s." % [room_id, current_room])
+		return
+
+	if rooms_completed.get(room_id, false):
+		push_warning("GameManager.complete_room ignorado: sala %s ja estava concluida." % room_id)
+		return
+
+	rooms_completed[room_id] = true
+	room_completed.emit(room_id)
+
+	if room_id < 4:
+		return_to_hub()
+		return
+
+	_transition_to_scene_path(FINAL_SCENE_PATH, current_room, false)
+
+
+func _transition_to_scene_path(scene_path: String, next_room_id: int, update_current_room: bool) -> void:
+	if state == State.TRANSITIONING:
+		push_warning("GameManager.transition_to_room ignorado: transicao ja esta em andamento.")
+		return
+
+	if _fade_rect == null:
+		push_error("GameManager.transition_to_room falhou: overlay de fade nao foi inicializado.")
+		return
+
+	if not ResourceLoader.exists(scene_path):
+		push_error("GameManager.transition_to_room falhou: cena nao encontrada em %s" % scene_path)
+		return
+
+	var packed_scene: PackedScene = _get_or_load_scene(scene_path)
+	if packed_scene == null:
+		push_error("GameManager.transition_to_room falhou: PackedScene invalida para %s" % scene_path)
+		return
+
+	state = State.TRANSITIONING
+	transition_started.emit()
+
+	var fade_out_tween: Tween = create_tween()
+	fade_out_tween.tween_property(_fade_rect, "color", Color(0.0, 0.0, 0.0, 1.0), TRANSITION_FADE_DURATION)
+	await fade_out_tween.finished
+
+	var change_error: Error = get_tree().change_scene_to_packed(packed_scene)
+	if change_error != OK:
+		push_error("GameManager.transition_to_room falhou: change_scene_to_packed retornou erro %s para %s" % [change_error, scene_path])
+
+		var rollback_tween: Tween = create_tween()
+		rollback_tween.tween_property(_fade_rect, "color", Color(0.0, 0.0, 0.0, 0.0), TRANSITION_FADE_DURATION)
+		await rollback_tween.finished
+
+		state = State.PLAYING
+		return
+
+	await get_tree().scene_changed
+	if update_current_room:
+		current_room = next_room_id
+
+	_sync_bgm_for_scene_path(scene_path)
+
+	var fade_in_tween: Tween = create_tween()
+	fade_in_tween.tween_property(_fade_rect, "color", Color(0.0, 0.0, 0.0, 0.0), TRANSITION_FADE_DURATION)
+	await fade_in_tween.finished
+
+	state = State.PLAYING
+	transition_finished.emit()
+
+
+func _preload_available_scenes() -> void:
+	for scene_path_variant in ROOM_SCENES.values():
+		var scene_path: String = scene_path_variant
+		_cache_scene_if_available(scene_path)
+
+	_cache_scene_if_available(MAIN_MENU_SCENE_PATH)
+	_cache_scene_if_available(FINAL_SCENE_PATH)
+
+
+func _cache_scene_if_available(scene_path: String) -> void:
+	if _scene_cache.has(scene_path):
+		return
+
+	if not ResourceLoader.exists(scene_path):
+		return
+
+	var packed_scene: PackedScene = load(scene_path) as PackedScene
+	if packed_scene == null:
+		push_warning("GameManager nao conseguiu preload da cena em %s" % scene_path)
+		return
+
+	_scene_cache[scene_path] = packed_scene
+
+
+func _get_or_load_scene(scene_path: String) -> PackedScene:
+	if _scene_cache.has(scene_path):
+		return _scene_cache[scene_path] as PackedScene
+
+	var packed_scene: PackedScene = load(scene_path) as PackedScene
+	if packed_scene == null:
+		return null
+
+	_scene_cache[scene_path] = packed_scene
+	return packed_scene
+
+
+func _sync_bgm_with_active_scene() -> void:
+	var active_scene: Node = get_tree().current_scene
+	if active_scene == null:
+		return
+
+	_sync_bgm_for_scene_path(active_scene.scene_file_path)
+
+
+func _sync_bgm_for_scene_path(scene_path: String) -> void:
+	var audio_manager: Node = get_node_or_null("/root/AudioManager")
+	if audio_manager == null or not audio_manager.has_method("play_bgm"):
+		return
+
+	var track_key: String = _get_bgm_track_key_for_scene_path(scene_path)
+	if track_key.is_empty():
+		return
+
+	audio_manager.call("play_bgm", track_key)
+
+
+func _get_bgm_track_key_for_scene_path(scene_path: String) -> String:
+	if scene_path == MAIN_MENU_SCENE_PATH:
+		return "hub_room_1"
+
+	if scene_path == FINAL_SCENE_PATH:
+		return "finale"
+
+	for room_id_variant in ROOM_SCENES.keys():
+		var room_id: int = int(room_id_variant)
+		var room_scene_path: String = String(ROOM_SCENES[room_id])
+		if scene_path != room_scene_path:
+			continue
+
+		match room_id:
+			1:
+				return "room_1"
+			2:
+				return "room_2"
+			3:
+				return "room_3"
+			4:
+				return "finale"
+
+	return ""
+</file>
+
+<file path="core/game_manager.gd.uid">
+uid://c1k0lsr34gup5
+</file>
+
+<file path="rooms/room_3/baby_interaction.gd">
+extends Area2D
+
+signal touch_count_changed(touch_count: int)
+signal minimum_touches_reached(touch_count: int)
+
+const HEART_PATTERN: PackedStringArray = ["01100110", "11111111", "11111111", "11111111", "01111110", "00111100", "00011000", "00000000"]
+const HEART_COLOR: Color = Color(1.0, 0.45, 0.7, 1.0)
+const HITBOX_SIZE: Vector2 = Vector2(220.0, 220.0)
+const NEXT_INDICATOR_OFFSET: Vector2 = Vector2(-36.0, -180.0)
+
+@export var required_touches: int = 5
+@export var arrival_tolerance: float = 18.0
+@export var heart_float_distance: float = 64.0
+@export var heart_lifetime: float = 1.0
+@export var touch_sfx_variants: Array[AudioStream] = []
+
+var _protagonist: Node2D
+var _target_position: Vector2 = Vector2.ZERO
+var _touch_count: int = 0
+var _interaction_unlocked: bool = false
+var _moving_to_target: bool = false
+var _warned_missing_sfx: bool = false
+var _heart_texture: Texture2D
+
+@onready var _collision_shape: CollisionShape2D = _ensure_collision_shape()
+@onready var _next_indicator: Button = _ensure_next_indicator()
+
+func _ready() -> void:
+	input_pickable = false
+	monitoring = false
+	monitorable = false
+	_heart_texture = _build_heart_texture()
+
+func setup(protagonist: Node2D, target_position: Vector2) -> void:
+	if _protagonist != protagonist:
+		_disconnect_protagonist_signal()
+		_protagonist = protagonist
+		_connect_protagonist_signal()
+	_target_position = target_position
+
+func set_interaction_enabled(is_enabled: bool) -> void:
+	input_pickable = is_enabled
+	monitoring = is_enabled
+	monitorable = is_enabled
+
+func get_touch_count() -> int:
+	return _touch_count
+
+func get_next_indicator() -> Button:
+	return _next_indicator
+
+func _input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	var press_position: Variant = _extract_press_position(event)
+	if press_position == null:
+		return
+	if not _interaction_unlocked:
+		_request_approach()
+		return
+	_register_touch(press_position as Vector2)
+
+func _request_approach() -> void:
+	if _moving_to_target or _protagonist == null or not _protagonist.has_method("move_to_global_position"):
+		return
+	_moving_to_target = true
+	_protagonist.call("move_to_global_position", _target_position)
+
+func _register_touch(screen_position: Vector2) -> void:
+	_touch_count += 1
+	_spawn_heart(_screen_to_global_position(screen_position))
+	_play_touch_sfx()
+	touch_count_changed.emit(_touch_count)
+	if _touch_count >= required_touches and not _next_indicator.visible:
+		_next_indicator.visible = true
+		minimum_touches_reached.emit(_touch_count)
+
+func _on_destination_reached(destination: Vector2) -> void:
+	if not _moving_to_target:
+		return
+	_moving_to_target = false
+	if destination.distance_to(_target_position) > arrival_tolerance:
+		return
+	_interaction_unlocked = true
+
+func _connect_protagonist_signal() -> void:
+	if _protagonist == null or not _protagonist.has_signal("destination_reached"):
+		return
+	var callback: Callable = Callable(self, "_on_destination_reached")
+	if not _protagonist.is_connected("destination_reached", callback):
+		_protagonist.connect("destination_reached", callback)
+
+func _disconnect_protagonist_signal() -> void:
+	if _protagonist == null or not _protagonist.has_signal("destination_reached"):
+		return
+	var callback: Callable = Callable(self, "_on_destination_reached")
+	if _protagonist.is_connected("destination_reached", callback):
+		_protagonist.disconnect("destination_reached", callback)
+
+func _extract_press_position(event: InputEvent) -> Variant:
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			return mouse_event.position
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.pressed:
+			return touch_event.position
+	return null
+
+func _screen_to_global_position(screen_position: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
+
+func _spawn_heart(global_position_at_touch: Vector2) -> void:
+	if _heart_texture == null:
+		return
+	var heart: Sprite2D = Sprite2D.new()
+	heart.texture = _heart_texture
+	heart.scale = Vector2(4.0, 4.0)
+	heart.centered = true
+	heart.z_index = 20
+	heart.global_position = global_position_at_touch
+	get_parent().add_child(heart)
+	var tween: Tween = heart.create_tween()
+	tween.parallel().tween_property(heart, "global_position:y", heart.global_position.y - heart_float_distance, heart_lifetime)
+	tween.parallel().tween_property(heart, "modulate:a", 0.0, heart_lifetime)
+	tween.tween_callback(Callable(heart, "queue_free"))
+
+func _play_touch_sfx() -> void:
+	if touch_sfx_variants.is_empty():
+		if not _warned_missing_sfx:
+			_warned_missing_sfx = true
+			push_warning("BabyInteraction sem touch_sfx_variants configurados.")
+		return
+	var audio_manager: Node = get_node_or_null("/root/AudioManager")
+	if audio_manager == null or not audio_manager.has_method("play_sfx"):
+		return
+	var selected_sfx: AudioStream = touch_sfx_variants[randi() % touch_sfx_variants.size()]
+	if selected_sfx == null:
+		return
+	audio_manager.call("play_sfx", selected_sfx)
+
+func _ensure_collision_shape() -> CollisionShape2D:
+	var collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision_shape == null:
+		collision_shape = CollisionShape2D.new()
+		collision_shape.name = "CollisionShape2D"
+		add_child(collision_shape)
+	var rectangle_shape: RectangleShape2D = collision_shape.shape as RectangleShape2D
+	if rectangle_shape == null:
+		rectangle_shape = RectangleShape2D.new()
+		collision_shape.shape = rectangle_shape
+	rectangle_shape.size = HITBOX_SIZE
+	collision_shape.shape = rectangle_shape
+	return collision_shape
+
+func _ensure_next_indicator() -> Button:
+	var next_indicator: Button = get_node_or_null("NextIndicator") as Button
+	if next_indicator == null:
+		next_indicator = Button.new()
+		next_indicator.name = "NextIndicator"
+		add_child(next_indicator)
+	next_indicator.visible = false
+	next_indicator.disabled = true
+	next_indicator.focus_mode = Control.FOCUS_NONE
+	next_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	next_indicator.text = "→"
+	next_indicator.position = NEXT_INDICATOR_OFFSET
+	next_indicator.size = Vector2(72.0, 72.0)
+	next_indicator.modulate = Color(1.0, 1.0, 1.0, 0.9)
+	next_indicator.add_theme_font_size_override("font_size", 42)
+	next_indicator.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	next_indicator.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0, 1.0))
+	next_indicator.add_theme_color_override("font_pressed_color", Color(1.0, 1.0, 1.0, 1.0))
+	next_indicator.add_theme_color_override("font_disabled_color", Color(1.0, 1.0, 1.0, 1.0))
+	next_indicator.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	next_indicator.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	next_indicator.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	next_indicator.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	return next_indicator
+
+func _build_heart_texture() -> Texture2D:
+	var image: Image = Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.0, 0.0, 0.0, 0.0))
+	for y in range(HEART_PATTERN.size()):
+		var row: String = HEART_PATTERN[y]
+		for x in range(row.length()):
+			if row[x] == "1":
+				image.set_pixel(x, y, HEART_COLOR)
+	return ImageTexture.create_from_image(image)
+</file>
+
+<file path="rooms/room_3/baby_interaction.gd.uid">
+uid://d0j058ut0bflx
+</file>
+
+<file path="rooms/room_3/bullet_spawner.gd">
+extends Node
+
+const PROJECTILE_SCENE_PATH: String = "res://scenes/components/projectile.tscn"
+const PROJECTILE_SPAWN_OFFSET: float = 48.0
+
+@export var spawn_rate_range: Vector2 = Vector2(0.4, 0.8)
+@export var projectile_scale_range: Vector2 = Vector2(0.85, 1.25)
+
+var _projectile_scene: PackedScene
+var _spawn_timer: Timer
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _spawning_enabled: bool = false
+
+
+func _ready() -> void:
+	_rng.randomize()
+	_projectile_scene = _load_projectile_scene()
+	_spawn_timer = Timer.new()
+	_spawn_timer.name = "SpawnTimer"
+	_spawn_timer.one_shot = true
+	_spawn_timer.autostart = false
+	add_child(_spawn_timer)
+
+	var on_timeout: Callable = Callable(self, "_on_spawn_timer_timeout")
+	if not _spawn_timer.is_connected("timeout", on_timeout):
+		_spawn_timer.connect("timeout", on_timeout)
+
+
+func start_spawning() -> void:
+	if _spawning_enabled:
+		return
+
+	_spawning_enabled = true
+	_schedule_next_spawn()
+
+
+func stop_spawning() -> void:
+	_spawning_enabled = false
+	if _spawn_timer != null:
+		_spawn_timer.stop()
+
+
+func _on_spawn_timer_timeout() -> void:
+	if not _spawning_enabled:
+		return
+
+	_spawn_projectile()
+	_schedule_next_spawn()
+
+
+func _spawn_projectile() -> void:
+	if _projectile_scene == null:
+		push_warning("BulletSpawner nao conseguiu instanciar projectile.tscn porque a cena nao foi carregada.")
+		return
+
+	var projectile: Area2D = _projectile_scene.instantiate() as Area2D
+	if projectile == null:
+		push_warning("BulletSpawner recebeu uma instancia invalida de projectile.tscn.")
+		return
+
+	var spawn_data: Dictionary = _build_spawn_data()
+	var spawn_parent: Node = get_parent()
+	if spawn_parent == null:
+		spawn_parent = get_tree().current_scene
+
+	if spawn_parent == null:
+		push_warning("BulletSpawner nao encontrou parent para adicionar o projetil.")
+		projectile.queue_free()
+		return
+
+	spawn_parent.add_child(projectile)
+	projectile.global_position = spawn_data.get("position", Vector2.ZERO)
+	projectile.set("direction", spawn_data.get("direction", Vector2.DOWN))
+	projectile.rotation = float(spawn_data.get("rotation", 0.0))
+	projectile.scale = Vector2.ONE * float(spawn_data.get("scale", 1.0))
+
+
+func _schedule_next_spawn() -> void:
+	if not _spawning_enabled or _spawn_timer == null:
+		return
+
+	var min_rate: float = maxf(minf(spawn_rate_range.x, spawn_rate_range.y), 0.01)
+	var max_rate: float = maxf(maxf(spawn_rate_range.x, spawn_rate_range.y), min_rate)
+	_spawn_timer.wait_time = _rng.randf_range(min_rate, max_rate)
+	_spawn_timer.start()
+
+
+func _build_spawn_data() -> Dictionary:
+	var viewport_rect: Rect2 = get_viewport().get_visible_rect()
+	var top_left: Vector2 = _screen_to_global_position(viewport_rect.position)
+	var bottom_right: Vector2 = _screen_to_global_position(viewport_rect.position + viewport_rect.size)
+	var min_bounds: Vector2 = Vector2(
+		minf(top_left.x, bottom_right.x),
+		minf(top_left.y, bottom_right.y)
+	)
+	var max_bounds: Vector2 = Vector2(
+		maxf(top_left.x, bottom_right.x),
+		maxf(top_left.y, bottom_right.y)
+	)
+	var center_point: Vector2 = (min_bounds + max_bounds) * 0.5
+	var edge_index: int = _rng.randi_range(0, 3)
+	var spawn_position: Vector2 = Vector2.ZERO
+
+	match edge_index:
+		0:
+			spawn_position = Vector2(min_bounds.x - PROJECTILE_SPAWN_OFFSET, _rng.randf_range(min_bounds.y, max_bounds.y))
+		1:
+			spawn_position = Vector2(max_bounds.x + PROJECTILE_SPAWN_OFFSET, _rng.randf_range(min_bounds.y, max_bounds.y))
+		2:
+			spawn_position = Vector2(_rng.randf_range(min_bounds.x, max_bounds.x), min_bounds.y - PROJECTILE_SPAWN_OFFSET)
+		_:
+			spawn_position = Vector2(_rng.randf_range(min_bounds.x, max_bounds.x), max_bounds.y + PROJECTILE_SPAWN_OFFSET)
+
+	var direction_to_center: Vector2 = (center_point - spawn_position).normalized()
+	var min_scale: float = maxf(minf(projectile_scale_range.x, projectile_scale_range.y), 0.1)
+	var max_scale: float = maxf(maxf(projectile_scale_range.x, projectile_scale_range.y), min_scale)
+	var projectile_scale: float = _rng.randf_range(min_scale, max_scale)
+
+	return {
+		"position": spawn_position,
+		"direction": direction_to_center,
+		"rotation": direction_to_center.angle(),
+		"scale": projectile_scale,
+	}
+
+
+func _load_projectile_scene() -> PackedScene:
+	if not ResourceLoader.exists(PROJECTILE_SCENE_PATH):
+		push_warning("BulletSpawner nao encontrou a cena do projetil em %s." % PROJECTILE_SCENE_PATH)
+		return null
+
+	var projectile_scene: PackedScene = load(PROJECTILE_SCENE_PATH) as PackedScene
+	if projectile_scene == null:
+		push_warning("BulletSpawner nao conseguiu carregar a cena do projetil em %s." % PROJECTILE_SCENE_PATH)
+		return null
+
+	return projectile_scene
+
+
+func _screen_to_global_position(screen_position: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
+</file>
+
+<file path="rooms/room_3/bullet_spawner.gd.uid">
+uid://cufs18snc7nnl
+</file>
+
+<file path="rooms/room_3/player_dodge.gd">
+extends "res://scripts/components/protagonist_actor.gd"
+
+signal hit
+
+const PROJECTILE_GROUP: StringName = &"projectile"
+
+@onready var _hitbox: Area2D = $Hitbox
+
+var _active_touch_index: int = -1
+var _last_global_position: Vector2 = Vector2.ZERO
+
+
+func _ready() -> void:
+	super._ready()
+	_last_global_position = global_position
+	_connect_hitbox()
+
+
+func _input(event: InputEvent) -> void:
+	if not _manual_input_enabled:
+		return
+
+	if event is InputEventMouseMotion:
+		var mouse_motion: InputEventMouseMotion = event as InputEventMouseMotion
+		_follow_screen_position(mouse_motion.position)
+		return
+
+	if event is InputEventMouseButton:
+		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
+			_follow_screen_position(mouse_button.position)
+		return
+
+	if event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		if touch_event.pressed and (_active_touch_index == -1 or _active_touch_index == touch_event.index):
+			_active_touch_index = touch_event.index
+			_follow_screen_position(touch_event.position)
+			return
+
+		if not touch_event.pressed and touch_event.index == _active_touch_index:
+			_active_touch_index = -1
+		return
+
+	if event is InputEventScreenDrag:
+		var drag_event: InputEventScreenDrag = event as InputEventScreenDrag
+		if _active_touch_index == -1:
+			_active_touch_index = drag_event.index
+
+		if drag_event.index == _active_touch_index:
+			_follow_screen_position(drag_event.position)
+
+
+func _physics_process(_delta: float) -> void:
+	var movement_delta: Vector2 = global_position - _last_global_position
+	if movement_delta.length_squared() > 0.01:
+		_update_facing_direction(movement_delta)
+		_play_animation(ANIMATION_WALKING)
+	else:
+		_play_animation(ANIMATION_IDLE)
+
+	_last_global_position = global_position
+
+
+func _connect_hitbox() -> void:
+	if _hitbox == null:
+		push_warning("PlayerDodge nao encontrou o node Hitbox na protagonista da Sala 3.")
+		return
+
+	var on_area_entered: Callable = Callable(self, "_on_hitbox_area_entered")
+	if not _hitbox.is_connected("area_entered", on_area_entered):
+		_hitbox.connect("area_entered", on_area_entered)
+
+
+func _follow_screen_position(screen_position: Vector2) -> void:
+	global_position = _clamp_to_margins(_screen_to_global_position(screen_position))
+	_destination = global_position
+	_is_moving = false
+
+
+func _on_hitbox_area_entered(area: Area2D) -> void:
+	if area == null:
+		return
+
+	if not area.is_in_group(PROJECTILE_GROUP):
+		return
+
+	hit.emit()
+</file>
+
+<file path="rooms/room_3/player_dodge.gd.uid">
+uid://bi4i83erlktod
+</file>
+
+<file path="rooms/room_3/projectile.gd">
+extends Area2D
+
+const PROJECTILE_LIFETIME_MAX: float = 5.0
+
+@export var speed: float = 420.0
+@export var direction: Vector2 = Vector2.RIGHT
+
+@onready var _screen_notifier: VisibleOnScreenNotifier2D = $VisibleOnScreenNotifier2D
+@onready var _lifetime_timer: Timer = $LifetimeTimer
+
+
+func _ready() -> void:
+	_connect_screen_notifier()
+	_configure_lifetime_timer()
+
+
+func _process(delta: float) -> void:
+	global_position += direction.normalized() * speed * delta
+
+
+func _connect_screen_notifier() -> void:
+	if _screen_notifier == null:
+		push_warning("Projectile nao encontrou VisibleOnScreenNotifier2D.")
+		return
+
+	var on_screen_exited: Callable = Callable(self, "_on_screen_exited")
+	if not _screen_notifier.is_connected("screen_exited", on_screen_exited):
+		_screen_notifier.connect("screen_exited", on_screen_exited)
+
+
+func _configure_lifetime_timer() -> void:
+	if _lifetime_timer == null:
+		push_warning("Projectile nao encontrou LifetimeTimer.")
+		return
+
+	_lifetime_timer.one_shot = true
+	_lifetime_timer.autostart = false
+	_lifetime_timer.wait_time = PROJECTILE_LIFETIME_MAX
+
+	var on_timeout: Callable = Callable(self, "_on_lifetime_timeout")
+	if not _lifetime_timer.is_connected("timeout", on_timeout):
+		_lifetime_timer.connect("timeout", on_timeout)
+
+	_lifetime_timer.start()
+
+
+func _on_screen_exited() -> void:
+	queue_free()
+
+
+func _on_lifetime_timeout() -> void:
+	queue_free()
+</file>
+
+<file path="rooms/room_3/projectile.gd.uid">
+uid://b6atbrm0bctf0
+</file>
+
+<file path="rooms/main_menu_controller.gd">
 extends Node2D
 
 const DOOR_UNLOCKED_MODULATE: Color = Color(1.0, 1.0, 1.0, 1.0)
@@ -409,438 +2582,11 @@ func _get_fog(room_id: int) -> ColorRect:
 			return null
 </file>
 
-<file path="scripts/core/audio_manager.gd">
-extends Node
-
-const TRACKS: Dictionary = {
-	"main": preload("res://assets/audio/EndOfBeginninV1.ogg"),
-	"hub_room_1": preload("res://assets/audio/EndOfBeginninV1.ogg"),
-	"room_1": preload("res://assets/audio/EndOfBeginninV1.ogg"),
-	"room_2": preload("res://assets/audio/EndOfBeginninV2.ogg"),
-	"room_3": preload("res://assets/audio/EndOfBeginninV3.ogg"),
-	"finale": preload("res://assets/audio/GooGooDools.ogg"),
-	"room_4": preload("res://assets/audio/GooGooDools.ogg"),
-}
-const BGM_FADE_DURATION: float = 0.5
-const BGM_MUTED_VOLUME_DB: float = -80.0
-const BGM_DEFAULT_VOLUME_DB: float = 0.0
-
-var bgm_player: AudioStreamPlayer
-var sfx_player: AudioStreamPlayer
-var _bgm_tween: Tween
-var _bgm_transition_in_progress: bool = false
-var _current_bgm_track_key: String = ""
-var _requested_bgm_track_key: String = ""
-var _stop_bgm_requested: bool = false
-var _stop_bgm_fade_duration: float = BGM_FADE_DURATION
-
-
-func _ready() -> void:
-	_ensure_players()
-	_configure_bgm_tracks()
-
-
-func _ensure_players() -> void:
-	if bgm_player == null:
-		bgm_player = AudioStreamPlayer.new()
-		bgm_player.name = "bgm_player"
-		bgm_player.volume_db = BGM_DEFAULT_VOLUME_DB
-		add_child(bgm_player)
-
-	if sfx_player == null:
-		sfx_player = AudioStreamPlayer.new()
-		sfx_player.name = "sfx_player"
-		add_child(sfx_player)
-
-
-func play_bgm(track_key: String) -> void:
-	_ensure_players()
-	_configure_bgm_tracks()
-
-	if not TRACKS.has(track_key):
-		push_warning("AudioManager.play_bgm ignorado: track_key inexistente: %s" % track_key)
-		return
-
-	var track: AudioStream = TRACKS.get(track_key)
-	if track == null:
-		push_warning("AudioManager.play_bgm ignorado: track nula para key %s" % track_key)
-		return
-
-	if _requested_bgm_track_key == track_key:
-		return
-
-	if _current_bgm_track_key == track_key and bgm_player.playing and not _stop_bgm_requested:
-		return
-
-	_requested_bgm_track_key = track_key
-	_stop_bgm_requested = false
-	_process_bgm_requests()
-
-
-func play_sfx(sfx: AudioStream) -> void:
-	_ensure_players()
-	sfx_player.stream = sfx
-	sfx_player.play()
-
-
-func stop_bgm(fade_duration: float = 0.5) -> void:
-	_ensure_players()
-
-	if not bgm_player.playing and _current_bgm_track_key == "" and _requested_bgm_track_key == "":
-		return
-
-	_requested_bgm_track_key = ""
-	_stop_bgm_requested = true
-	_stop_bgm_fade_duration = max(fade_duration, 0.0)
-	_process_bgm_requests()
-
-
-func set_bgm_volume(target_volume_db: float, fade_duration: float = 0.5) -> void:
-	_ensure_players()
-
-	if not bgm_player.playing:
-		return
-
-	var clamped_duration: float = max(fade_duration, 0.0)
-	if clamped_duration <= 0.0:
-		bgm_player.volume_db = target_volume_db
-		return
-
-	if _bgm_tween != null:
-		_bgm_tween.kill()
-		_bgm_tween = null
-
-	_bgm_tween = create_tween()
-	_bgm_tween.tween_property(bgm_player, "volume_db", target_volume_db, clamped_duration)
-	await _bgm_tween.finished
-	_bgm_tween = null
-
-
-func _process_bgm_requests() -> void:
-	if _bgm_transition_in_progress:
-		return
-
-	_bgm_transition_in_progress = true
-
-	while true:
-		if _stop_bgm_requested:
-			var fade_duration: float = _stop_bgm_fade_duration
-			_stop_bgm_requested = false
-
-			if bgm_player.playing:
-				await _fade_bgm_volume_to(BGM_MUTED_VOLUME_DB, fade_duration)
-				bgm_player.stop()
-
-			bgm_player.stream = null
-			bgm_player.volume_db = BGM_DEFAULT_VOLUME_DB
-			_current_bgm_track_key = ""
-
-			if _requested_bgm_track_key != "":
-				continue
-
-			break
-
-		var next_track_key: String = _requested_bgm_track_key
-		_requested_bgm_track_key = ""
-
-		if next_track_key == "":
-			break
-
-		var next_track: AudioStream = TRACKS.get(next_track_key)
-		if next_track == null:
-			push_warning("AudioManager.play_bgm ignorado: track nula para key %s" % next_track_key)
-			continue
-
-		if _current_bgm_track_key == next_track_key and bgm_player.playing:
-			bgm_player.volume_db = BGM_DEFAULT_VOLUME_DB
-			continue
-
-		if bgm_player.playing:
-			await _fade_bgm_volume_to(BGM_MUTED_VOLUME_DB, BGM_FADE_DURATION)
-			bgm_player.stop()
-
-		bgm_player.stream = next_track
-		bgm_player.volume_db = BGM_MUTED_VOLUME_DB
-		bgm_player.play()
-		_current_bgm_track_key = next_track_key
-
-		await _fade_bgm_volume_to(BGM_DEFAULT_VOLUME_DB, BGM_FADE_DURATION)
-
-		if _stop_bgm_requested:
-			continue
-
-		if _requested_bgm_track_key != "" and _requested_bgm_track_key != _current_bgm_track_key:
-			continue
-
-		break
-
-	_bgm_transition_in_progress = false
-
-
-func _fade_bgm_volume_to(target_volume_db: float, duration: float) -> void:
-	if duration <= 0.0:
-		bgm_player.volume_db = target_volume_db
-		return
-
-	_bgm_tween = create_tween()
-	_bgm_tween.tween_property(bgm_player, "volume_db", target_volume_db, duration)
-	await _bgm_tween.finished
-	_bgm_tween = null
-
-
-func _configure_bgm_tracks() -> void:
-	for track_variant in TRACKS.values():
-		var track: AudioStream = track_variant
-		var ogg_track: AudioStreamOggVorbis = track as AudioStreamOggVorbis
-		if ogg_track == null:
-			continue
-
-		ogg_track.loop = true
+<file path="rooms/main_menu_controller.gd.uid">
+uid://cae4grqlpjjxr
 </file>
 
-<file path="scripts/core/game_manager.gd">
-extends Node
-
-enum State {
-	PLAYING,
-	TRANSITIONING,
-}
-
-const ROOM_SCENES: Dictionary = {
-	1: "res://scenes/rooms/room_1.tscn",
-	2: "res://scenes/rooms/room_2.tscn",
-	3: "res://scenes/rooms/room_3.tscn",
-	4: "res://scenes/rooms/room_4.tscn",
-}
-const MAIN_MENU_SCENE_PATH: String = "res://scenes/ui/main_menu.tscn"
-const FINAL_SCENE_PATH: String = "res://scenes/ui/final_screen.tscn"
-
-signal room_completed(room_id: int)
-signal transition_started
-signal transition_finished
-
-const TRANSITION_FADE_DURATION: float = 0.5
-
-var _fade_layer: CanvasLayer
-var _fade_rect: ColorRect
-var _scene_cache: Dictionary = {}
-var state: int = State.PLAYING
-var current_room: int = 0
-var rooms_completed: Dictionary = {}
-
-
-func _ready() -> void:
-	_fade_layer = CanvasLayer.new()
-	_fade_layer.name = "FadeLayer"
-	add_child(_fade_layer)
-
-	_fade_rect = ColorRect.new()
-	_fade_rect.name = "FadeRect"
-	_fade_rect.color = Color(0.0, 0.0, 0.0, 0.0)
-	_fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_fade_rect.offset_left = 0.0
-	_fade_rect.offset_top = 0.0
-	_fade_rect.offset_right = 0.0
-	_fade_rect.offset_bottom = 0.0
-	_fade_rect.z_index = 100
-	_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fade_layer.add_child(_fade_rect)
-
-	_preload_available_scenes()
-	call_deferred("_sync_bgm_with_active_scene")
-
-
-func transition_to_room(room_id: int) -> void:
-	if not ROOM_SCENES.has(room_id):
-		push_warning("GameManager.transition_to_room ignorado: room_id invalido: %s" % room_id)
-		return
-
-	if state == State.TRANSITIONING:
-		push_warning("GameManager.transition_to_room ignorado: transicao ja esta em andamento.")
-		return
-
-	if current_room == 0 and not can_enter_room(room_id):
-		push_warning("GameManager.transition_to_room ignorado: room_id %s nao esta liberado a partir do hub." % room_id)
-		return
-
-	_transition_to_scene_path(ROOM_SCENES[room_id], room_id, true)
-
-
-func return_to_hub() -> void:
-	_transition_to_scene_path(MAIN_MENU_SCENE_PATH, 0, true)
-
-
-func get_next_room_to_unlock() -> int:
-	for room_index in 4:
-		var room_id: int = room_index + 1
-		if not rooms_completed.get(room_id, false):
-			return room_id
-
-	return 0
-
-
-func can_enter_room(room_id: int) -> bool:
-	if not ROOM_SCENES.has(room_id):
-		return false
-
-	if rooms_completed.get(room_id, false):
-		return false
-
-	return room_id == get_next_room_to_unlock()
-
-
-func complete_room(room_id: int) -> void:
-	if room_id != current_room:
-		push_warning("GameManager.complete_room ignorado: room_id %s nao corresponde a current_room %s." % [room_id, current_room])
-		return
-
-	if rooms_completed.get(room_id, false):
-		push_warning("GameManager.complete_room ignorado: sala %s ja estava concluida." % room_id)
-		return
-
-	rooms_completed[room_id] = true
-	room_completed.emit(room_id)
-
-	if room_id < 4:
-		return_to_hub()
-		return
-
-	_transition_to_scene_path(FINAL_SCENE_PATH, current_room, false)
-
-
-func _transition_to_scene_path(scene_path: String, next_room_id: int, update_current_room: bool) -> void:
-	if state == State.TRANSITIONING:
-		push_warning("GameManager.transition_to_room ignorado: transicao ja esta em andamento.")
-		return
-
-	if _fade_rect == null:
-		push_error("GameManager.transition_to_room falhou: overlay de fade nao foi inicializado.")
-		return
-
-	if not ResourceLoader.exists(scene_path):
-		push_error("GameManager.transition_to_room falhou: cena nao encontrada em %s" % scene_path)
-		return
-
-	var packed_scene: PackedScene = _get_or_load_scene(scene_path)
-	if packed_scene == null:
-		push_error("GameManager.transition_to_room falhou: PackedScene invalida para %s" % scene_path)
-		return
-
-	state = State.TRANSITIONING
-	transition_started.emit()
-
-	var fade_out_tween: Tween = create_tween()
-	fade_out_tween.tween_property(_fade_rect, "color", Color(0.0, 0.0, 0.0, 1.0), TRANSITION_FADE_DURATION)
-	await fade_out_tween.finished
-
-	var change_error: Error = get_tree().change_scene_to_packed(packed_scene)
-	if change_error != OK:
-		push_error("GameManager.transition_to_room falhou: change_scene_to_packed retornou erro %s para %s" % [change_error, scene_path])
-
-		var rollback_tween: Tween = create_tween()
-		rollback_tween.tween_property(_fade_rect, "color", Color(0.0, 0.0, 0.0, 0.0), TRANSITION_FADE_DURATION)
-		await rollback_tween.finished
-
-		state = State.PLAYING
-		return
-
-	await get_tree().scene_changed
-	if update_current_room:
-		current_room = next_room_id
-
-	_sync_bgm_for_scene_path(scene_path)
-
-	var fade_in_tween: Tween = create_tween()
-	fade_in_tween.tween_property(_fade_rect, "color", Color(0.0, 0.0, 0.0, 0.0), TRANSITION_FADE_DURATION)
-	await fade_in_tween.finished
-
-	state = State.PLAYING
-	transition_finished.emit()
-
-
-func _preload_available_scenes() -> void:
-	for scene_path_variant in ROOM_SCENES.values():
-		var scene_path: String = scene_path_variant
-		_cache_scene_if_available(scene_path)
-
-	_cache_scene_if_available(MAIN_MENU_SCENE_PATH)
-	_cache_scene_if_available(FINAL_SCENE_PATH)
-
-
-func _cache_scene_if_available(scene_path: String) -> void:
-	if _scene_cache.has(scene_path):
-		return
-
-	if not ResourceLoader.exists(scene_path):
-		return
-
-	var packed_scene: PackedScene = load(scene_path) as PackedScene
-	if packed_scene == null:
-		push_warning("GameManager nao conseguiu preload da cena em %s" % scene_path)
-		return
-
-	_scene_cache[scene_path] = packed_scene
-
-
-func _get_or_load_scene(scene_path: String) -> PackedScene:
-	if _scene_cache.has(scene_path):
-		return _scene_cache[scene_path] as PackedScene
-
-	var packed_scene: PackedScene = load(scene_path) as PackedScene
-	if packed_scene == null:
-		return null
-
-	_scene_cache[scene_path] = packed_scene
-	return packed_scene
-
-
-func _sync_bgm_with_active_scene() -> void:
-	var active_scene: Node = get_tree().current_scene
-	if active_scene == null:
-		return
-
-	_sync_bgm_for_scene_path(active_scene.scene_file_path)
-
-
-func _sync_bgm_for_scene_path(scene_path: String) -> void:
-	var audio_manager: Node = get_node_or_null("/root/AudioManager")
-	if audio_manager == null or not audio_manager.has_method("play_bgm"):
-		return
-
-	var track_key: String = _get_bgm_track_key_for_scene_path(scene_path)
-	if track_key.is_empty():
-		return
-
-	audio_manager.call("play_bgm", track_key)
-
-
-func _get_bgm_track_key_for_scene_path(scene_path: String) -> String:
-	if scene_path == MAIN_MENU_SCENE_PATH:
-		return "hub_room_1"
-
-	if scene_path == FINAL_SCENE_PATH:
-		return "finale"
-
-	for room_id_variant in ROOM_SCENES.keys():
-		var room_id: int = int(room_id_variant)
-		var room_scene_path: String = String(ROOM_SCENES[room_id])
-		if scene_path != room_scene_path:
-			continue
-
-		match room_id:
-			1:
-				return "room_1"
-			2:
-				return "room_2"
-			3:
-				return "room_3"
-			4:
-				return "finale"
-
-	return ""
-</file>
-
-<file path="scripts/rooms/room_1_controller.gd">
+<file path="rooms/room_1_controller.gd">
 extends Node2D
 
 const HINT_BASE_MODULATE: Color = Color(1.0, 1.0, 1.0, 0.14)
@@ -1323,7 +3069,11 @@ func _stop_hint_tween() -> void:
 		_hint_tween = null
 </file>
 
-<file path="scripts/rooms/room_2_controller.gd">
+<file path="rooms/room_1_controller.gd.uid">
+uid://cabqq5smiyomh
+</file>
+
+<file path="rooms/room_2_controller.gd">
 extends Node2D
 
 signal task_enabled(task_id: String)
@@ -2086,7 +3836,11 @@ func _build_final_loop_frames() -> SpriteFrames:
 	return sprite_frames
 </file>
 
-<file path="scripts/rooms/room_3_controller.gd">
+<file path="rooms/room_2_controller.gd.uid">
+uid://cdts8tldlynsb
+</file>
+
+<file path="rooms/room_3_controller.gd">
 extends Node2D
 
 const HOSPITAL_BACKGROUND_TEXTURE_PATH: String = "res://assets/sprites/Hospital-11024x1536_6C4L.png"
@@ -2123,7 +3877,9 @@ const NURSERY_BGM_TARGET_VOLUME_DB: float = -8.0
 @onready var _survival_timer: Timer = $CanvasLayer/SurvivalTimer
 @onready var _bullet_spawner: Node = get_node_or_null("CanvasLayer/BulletSpawner") as Node
 @onready var _doctor: AnimatedSprite2D = get_node_or_null("CanvasLayer/Doctor") as AnimatedSprite2D
-@onready var _doctor_timer_label: Label = get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
+@onready var _doctor_timer_label: Label = _resolve_doctor_timer_label()
+@onready var _baby_interaction: Area2D = get_node_or_null("CanvasLayer/BabyInteraction") as Area2D
+@onready var _ravi_sprite: AnimatedSprite2D = get_node_or_null("CanvasLayer/BabyInteraction/Ravi") as AnimatedSprite2D
 
 var _default_protagonist_modulate: Color = Color.WHITE
 var _hit_flash_tween: Tween
@@ -2131,7 +3887,6 @@ var _hit_invulnerable: bool = false
 var _survival_phase_finished: bool = false
 var _nursery_transition_started: bool = false
 var _nursery_background: AnimatedSprite2D
-var _ravi_sprite: AnimatedSprite2D
 
 
 func _ready() -> void:
@@ -2206,6 +3961,14 @@ func _start_bullet_spawner() -> void:
 		_bullet_spawner.call("start_spawning")
 
 
+func _resolve_doctor_timer_label() -> Label:
+	var canvas_label: Label = get_node_or_null("CanvasLayer/TimerLabel") as Label
+	if canvas_label != null:
+		return canvas_label
+
+	return get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
+
+
 func _stop_bullet_spawner() -> void:
 	if _bullet_spawner == null:
 		return
@@ -2216,9 +3979,11 @@ func _stop_bullet_spawner() -> void:
 
 func _configure_doctor_timer_label() -> void:
 	if _doctor_timer_label == null:
-		push_warning("Room3Controller nao encontrou CanvasLayer/Doctor/TimerLabel.")
+		push_warning("Room3Controller nao encontrou o contador visivel do Doctor.")
 		return
 
+	_doctor_timer_label.visible = true
+	_doctor_timer_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	_doctor_timer_label.add_theme_font_size_override("font_size", 64)
 	_doctor_timer_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.9, 1.0))
 	_doctor_timer_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
@@ -2235,10 +4000,12 @@ func _update_doctor_timer_label() -> void:
 		return
 
 	if _survival_phase_finished:
-		_doctor_timer_label.text = "0.0"
+		_doctor_timer_label.visible = false
+		_doctor_timer_label.text = ""
 		return
 
 	var seconds_left: float = maxf(_survival_timer.time_left, 0.0)
+	_doctor_timer_label.visible = true
 	_doctor_timer_label.text = "%.1f" % seconds_left
 
 
@@ -2361,27 +4128,38 @@ func _prepare_nursery_nodes() -> void:
 		_nursery_background.frame = 0
 		_nursery_background.frame_progress = 0.0
 
-	if _ravi_sprite == null:
-		_ravi_sprite = AnimatedSprite2D.new()
-		_ravi_sprite.name = "Ravi"
-		_ravi_sprite.position = Vector2(270.0, 520.0)
-		_ravi_sprite.scale = Vector2(1.0, 1.0)
-		_ravi_sprite.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		_ravi_sprite.visible = false
-		_ravi_sprite.z_index = 3
-		_canvas_layer.add_child(_ravi_sprite)
+	if _baby_interaction == null:
+		push_warning("Room3Controller nao encontrou CanvasLayer/BabyInteraction.")
+		return
 
-	var ravi_frames: SpriteFrames = _build_sprite_frames(
-		RAVI_IDLE_TEXTURE_PATH,
-		&"funny_idle",
-		RAVI_IDLE_COLUMNS,
-		RAVI_IDLE_ROWS,
-		RAVI_IDLE_FRAME_SIZE,
-		RAVI_IDLE_FPS,
-		true
-	)
-	if ravi_frames != null:
-		_ravi_sprite.sprite_frames = ravi_frames
+	if _ravi_sprite == null:
+		push_warning("Room3Controller nao encontrou CanvasLayer/BabyInteraction/Ravi.")
+		return
+
+	_baby_interaction.global_position = Vector2(270.0, 520.0)
+	if _baby_interaction.has_method("setup"):
+		_baby_interaction.call("setup", _protagonist, _baby_interaction.global_position)
+	if _baby_interaction.has_method("set_interaction_enabled"):
+		_baby_interaction.call("set_interaction_enabled", false)
+
+	_ravi_sprite.visible = false
+	_ravi_sprite.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_ravi_sprite.scale = Vector2.ONE
+
+	if _ravi_sprite.sprite_frames == null or not _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
+		var ravi_frames: SpriteFrames = _build_sprite_frames(
+			RAVI_IDLE_TEXTURE_PATH,
+			&"funny_idle",
+			RAVI_IDLE_COLUMNS,
+			RAVI_IDLE_ROWS,
+			RAVI_IDLE_FRAME_SIZE,
+			RAVI_IDLE_FPS,
+			true
+		)
+		if ravi_frames != null:
+			_ravi_sprite.sprite_frames = ravi_frames
+
+	if _ravi_sprite.sprite_frames != null and _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
 		_ravi_sprite.animation = &"funny_idle"
 		_ravi_sprite.frame = 0
 		_ravi_sprite.frame_progress = 0.0
@@ -2416,7 +4194,6 @@ func _fade_in_nursery_background() -> void:
 
 func _soften_room_3_music() -> void:
 	if Engine.has_singleton("AudioManager"):
-		AudioManager.play_bgm("room_3")
 		AudioManager.set_bgm_volume(NURSERY_BGM_TARGET_VOLUME_DB, NURSERY_FADE_DURATION)
 
 
@@ -2428,7 +4205,11 @@ func _reveal_ravi_center() -> void:
 	_ravi_sprite.visible = true
 	_ravi_sprite.modulate.a = 0.0
 	_ravi_sprite.scale = Vector2(0.9, 0.9)
-	_ravi_sprite.play(&"funny_idle")
+	if _ravi_sprite.sprite_frames != null and _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
+		_ravi_sprite.play(&"funny_idle")
+
+	if _baby_interaction != null and _baby_interaction.has_method("set_interaction_enabled"):
+		_baby_interaction.call("set_interaction_enabled", true)
 
 	var reveal_tween: Tween = create_tween()
 	reveal_tween.parallel().tween_property(_ravi_sprite, "modulate:a", 1.0, RAVI_REVEAL_DURATION)
@@ -2473,686 +4254,8 @@ func _build_sprite_frames(
 	return sprite_frames
 </file>
 
-<file path="project.md">
-## ABORDAGEM
-
-**Princípio central:** Construir os tijolos antes da casa, e a casa antes dos cômodos.
-
-```
-FASE 0 ─ Projeto + Managers
-FASE 1 ─ 4 Componentes reutilizáveis + validação isolada
-FASE 2 ─ Sala Principal / Hub de progressão
-FASE 3 ─ Sala 1 (COLETE)
-FASE 4 ─ Sala 2 (ORGANIZE)
-FASE 5 ─ Sala 3 (SOBREVIVA) + Sala Final
-FASE 6 ─ Fluxo completo + polimento + Android
-```
-
-Cada fase tem checkpoint que impede avançar sem validação.
-
-**Change Level:** N/A (projeto novo)
-
-## REGRAS_APLICAVEIS
-
-| Regra | Aplicação neste projeto |
-|-------|------------------------|
-| KISS | Componentes fazem uma coisa. Sem abstração prematura |
-| SRP | Um script = uma responsabilidade. Controller ≠ componente |
-| DRY | Drag, Reveal, Hotspot escritos uma vez, usados em N salas |
-| Composição sobre herança | Nós Godot = composição natural |
-| Sinais para desacoplamento | Componentes emitem sinais, controllers reagem |
-| Protagonista recorrente | A protagonista existe no hub e em todas as salas jogáveis, reaproveitando uma cena/script base |
-| Ação por aproximação | Clique define destino; transições, coletas e minigames só disparam quando a protagonista alcança o alvo |
-| Animação contextual | `walking` e `idle` são padrão; `interact` só entra nos momentos explicitamente planejados |
-| YAGNI | Nada de inventário, save system, ou menu separado complexo |
-
-## NAO_FAZER
-
-- ❌ Criar classe base `RoomBase` (salas são diferentes demais)
-- ❌ Mais de 2 Autoloads (GameManager e AudioManager bastam)
-- ❌ Lógica de mecânica dentro de scripts de UI
-- ❌ Hardcode de paths de cena (usar constantes em GameManager)
-- ❌ Polling em `_process` para detecção de click (usar `_input_event` de Area2D)
-- ❌ Criar sistemas que só servem uma sala (inline no controller)
-- ❌ Disparar troca de sala, coleta ou minigame antes da protagonista alcançar o alvo
-- ❌ Usar `interact` como resposta padrão para todo clique ou toda troca de estado
-- ❌ Limitar a protagonista com colisão de cenário; os limites de movimento devem vir de margens configuráveis por fase
-- ❌ Assets finais antes da mecânica funcionar com placeholders
-
-## PREMISSA_GLOBAL_DA_PROTAGONISTA
-
-- A protagonista aparece na sala principal e em todas as salas jogáveis.
-- Clique/toque sempre define um destino para a protagonista dentro das margens da fase.
-- Ações contextuais de sala só são executadas quando ela alcança o alvo associado.
-- A animação padrão da movimentação é `walking`; parada é `idle`; `interact` fica reservada para beats específicos definidos depois.
-- Cada fase define suas margens de navegação (`top`, `bottom`, `left`, `right`) em vez de usar colisão de cenário para travar movimento.
-
----
-
-## FASES
-
-### FASE 0: Projeto, Config e Managers
-**Objetivo:** Projeto funcional com infraestrutura mínima rodando
-**Subsistemas cobertos:** Estrutura, GameManager, AudioManager, config Android
-
-#### Tarefa 0.1: Estrutura de Projeto
-- **Descricao:** Criar organização de pastas e project.godot configurado
-- **Diretorio:** /
-- **Micro-Tasks:**
-  - [x] MT-0.1.1: Criar projeto Godot 4 com pastas: `scenes/rooms/`, `scenes/ui/`, `scripts/core/`, `scripts/components/`, `scripts/rooms/`, `assets/sprites/`, `assets/audio/`, `assets/fonts/`
-  - [X] MT-0.1.2: Configurar `project.godot`: viewport 540x960, stretch mode `canvas_items`, stretch aspect `keep`, orientation portrait
-  - [X] MT-0.1.3: Criar `.gitignore` para Godot 4 e commitar estrutura vazia
-- **Criterios de Aceitacao:**
-  1. Projeto abre no editor sem erros
-  2. Preview mostra proporção 9:16 vertical
-- **Classificacao:** Confirmado
-
-#### Tarefa 0.2: GameManager
-- **Descricao:** Autoload que controla estado do jogo, progressão e transições de cena
-- **Diretorio:** /scripts/core/
-- **Micro-Tasks:**
-  - [X] MT-0.2.1: Criar `game_manager.gd` com `enum State {PLAYING, TRANSITIONING}`, var `current_room: int = 0`, dict `rooms_completed: Dictionary = {}`
-  - [X] MT-0.2.2: Criar constante `ROOM_SCENES: Dictionary = {1: "res://scenes/rooms/room_1.tscn", ...}` mapeando id→path
-  - [X] MT-0.2.3: Implementar sinais: `room_completed(room_id: int)`, `transition_started`, `transition_finished`
-  - [X] MT-0.2.4: Criar `CanvasLayer` filho com `ColorRect` fullscreen preto (para fades), z_index=100
-  - [X] MT-0.2.5: Implementar `func transition_to_room(room_id: int)`: valida id, seta state TRANSITIONING, fade to black via Tween no ColorRect, `get_tree().change_scene_to_file()`, fade from black, seta PLAYING
-  - [X] MT-0.2.6: Implementar `func complete_room(room_id: int)`: marca dict, emite sinal e centraliza a progressão pós-sala
-  - [X] MT-0.2.7: Registrar como Autoload "GameManager" em Project Settings
-  - [X] MT-0.2.8: Criar `scripts/core/game_manager_test.gd`, `scenes/ui/test_game_manager_transition.tscn` e `scenes/rooms/room_1.tscn` placeholder mínima. A cena de teste chama `GameManager.transition_to_room(1)` em `_ready` e valida o fade. `room_1.tscn` será expandida em `MT-3.1.1`
-  - [X] MT-0.2.9: Refatorar fluxo do `GameManager` para a Sala Principal: adicionar `MAIN_MENU_SCENE_PATH`, `func return_to_hub()`, `func get_next_room_to_unlock() -> int`, `func can_enter_room(room_id: int) -> bool`. Atualizar `complete_room()` para voltar à sala principal quando `room_id < 4` e só ir para `final_screen` ao concluir a sala final
-- **Criterios de Aceitacao:**
-  1. `GameManager` acessível globalmente
-  2. Fade to/from black funciona
-  3. Troca de cena via `transition_to_room` funcional
-  4. Não permite transição durante outra transição
-- **Classificacao:** Confirmado
-
-#### Tarefa 0.3: AudioManager
-- **Descricao:** Autoload para BGM com crossfade e SFX one-shot
-- **Diretorio:** /scripts/core/
-- **Micro-Tasks:**
-  - [X] MT-0.3.1: Criar `audio_manager.gd` com 2 filhos `AudioStreamPlayer`: `bgm_player` e `sfx_player`
-  - [X] MT-0.3.2: Criar dict `TRACKS: Dictionary = {"main": preload("res://assets/audio/end_of_beginning.ogg"), "finale": preload("res://assets/audio/goo_goo_dolls.ogg")}` — com placeholders se áudio ainda não existe
-  - [X] MT-0.3.3: Implementar `func play_bgm(track_key: String)`: se já tocando mesma track ignora; se outra, crossfade (Tween volume down old → swap stream → Tween volume up)
-  - [X] MT-0.3.4: Implementar `func play_sfx(sfx: AudioStream)`: seta stream no sfx_player e toca (fire-and-forget)
-  - [X] MT-0.3.5: Implementar `func stop_bgm(fade_duration: float = 0.5)` com fade out
-  - [X] MT-0.3.6: Registrar como Autoload "AudioManager"
-- **Criterios de Aceitacao:**
-  1. BGM toca em loop
-  2. Crossfade funciona sem corte
-  3. SFX não interrompe BGM
-  4. Chamar `play_bgm` com mesma track não reinicia
-- **Classificacao:** Confirmado
-
-**Checkpoint FASE 0:** Projeto abre, Autoloads carregam, fade funciona entre duas cenas de teste vazias, áudio placeholder toca.
-
----
-
-### FASE 1: Componentes Reutilizáveis
-**Objetivo:** Construir os 4 tijolos que compõem todas as salas, testados isoladamente
-**Subsistemas cobertos:** Hotspot, Draggable, Revealer, EventChain
-
-#### Tarefa 1.1: Hotspot (Área clicável)
-- **Descricao:** Nó Area2D que detecta click/touch e emite sinal. Usado em Sala 1 (flores), Sala 2 (louça), Sala 3 (bebê)
-- **Diretorio:** /scripts/components/
-- **Micro-Tasks:**
-  - [X] MT-1.1.1: Criar `hotspot.gd` extends `Area2D` com exports: `hotspot_id: String`, `one_shot: bool = true`, `active: bool = true`
-  - [X] MT-1.1.2: Sinal `pressed(hotspot_id: String)`. Em `_input_event`, detectar `InputEventMouseButton` (button_index LEFT, pressed) OU `InputEventScreenTouch` (pressed). Se `active`, emitir sinal. Se `one_shot`, setar `active = false`
-  - [X] MT-1.1.3: Adicionar feedback: quando mouse/touch entra na área, modulate do parent levemente (1.1, 1.1, 1.1) para indicar interatividade. Resetar ao sair
-  - [X] MT-1.1.4: Criar cena de teste `test_hotspot.tscn` com 3 Hotspots + Label que mostra qual foi clicado. Validar touch e mouse
-- **Criterios de Aceitacao:**
-  1. Emite `pressed` exatamente uma vez se `one_shot`
-  2. Não emite se `active = false`
-  3. Funciona com mouse E touch
-  4. Feedback visual sutil ao hover/touch
-- **Classificacao:** Confirmado
-
-#### Tarefa 1.2: Draggable (Objeto arrastável)
-- **Descricao:** Nó que pode ser arrastado pelo jogador e detecta drop em zonas alvo. Usado em Sala 2 (vassoura, roupa) e na Sala Final (puzzle)
-- **Diretorio:** /scripts/components/
-- **Micro-Tasks:**
-  - [X] MT-1.2.1: Criar `draggable.gd` extends `Area2D` com exports: `drag_id: String`, `snap_back: bool = true`, `snap_distance: float = 40.0`, `active: bool = true`
-  - [X] MT-1.2.2: Guardar `_origin_position: Vector2` no `_ready`. Implementar estado interno `_dragging: bool`. Em `_input_event`, detectar press → `_dragging = true`. Em `_input(event)`, se `_dragging`: atualizar `global_position` para posição do touch/mouse. Detectar release → `_dragging = false`, chamar `_on_dropped()`
-  - [X] MT-1.2.3: Sinais: `drag_started(drag_id)`, `drag_ended(drag_id)`, `dropped_on_target(drag_id, target_area)`. Em `_on_dropped()`: checar overlapping areas. Se alguma pertence ao grupo "drop_target" e distância < `snap_distance`, snap para posição do target e emitir `dropped_on_target`. Senão, se `snap_back`, Tween de volta para `_origin_position`
-  - [X] MT-1.2.4: Criar `drop_zone.gd` extends `Area2D` — script mínimo que só adiciona ao grupo "drop_target" no `_ready` e tem export `zone_id: String`
-  - [X] MT-1.2.5: Criar cena de teste `test_drag.tscn` com 2 Draggables e 2 DropZones. Validar snap, snap_back, sinais
-- **Criterios de Aceitacao:**
-  1. Arrasto suave seguindo dedo/mouse
-  2. Snap para target quando solto próximo
-  3. Volta à origem quando solto fora
-  4. Funciona em touch (prioridade) e mouse
-  5. Não permite arrastar dois objetos simultaneamente
-- **Classificacao:** Confirmado
-
-#### Tarefa 1.3: Revealer (Transição visual escuro → cor)
-- **Descricao:** Script que anima a revelação visual de um nó (modulate cinza → branco). Usado em TODAS as salas
-- **Diretorio:** /scripts/components/
-- **Micro-Tasks:**
-  - [x] MT-1.3.1: Criar `revealer.gd` extends `Node` (attachable a qualquer nó visual). Exports: `reveal_duration: float = 0.6`, `hidden_color: Color = Color(0.15, 0.15, 0.15, 1.0)`, `revealed_color: Color = Color.WHITE`, `start_hidden: bool = true`
-  - [X] MT-1.3.2: No `_ready`, se `start_hidden`, setar `get_parent().modulate = hidden_color`. Sinal `revealed`. Implementar `func reveal()`: cria Tween, interpola `get_parent().modulate` de atual para `revealed_color` em `reveal_duration`, ao final emite `revealed`
-  - [X] MT-1.3.3: Implementar `func hide_visual()` (reverso, para reset) e `func reveal_instant()` (sem animação, para debug/testes)
-  - [X] MT-1.3.4: Criar cena de teste com 4 sprites coloridos, cada um com Revealer filho, e botão que chama `reveal()` em cada um sequencialmente
-- **Criterios de Aceitacao:**
-  1. Sprite começa escuro/cinza
-  2. `reveal()` anima suavemente para cor original
-  3. Sinal emitido ao completar
-  4. Múltiplas chamadas a `reveal()` não quebram (idempotente: ignora se já revelado)
-- **Classificacao:** Confirmado
-
-#### Tarefa 1.4: EventChain (Sequência cinematográfica)
-- **Descricao:** Sistema para orquestrar série de eventos com delays. Usado no finale de TODAS as salas (som → animação → spawn → fade → etc)
-- **Diretorio:** /scripts/components/
-- **Micro-Tasks:**
-  - [X] MT-1.4.1: Criar `event_chain.gd` extends `Node`. Define classe interna ou dict para steps. Cada step: `{callable: Callable, delay_after: float}`. Array `_steps: Array[Dictionary] = []`
-  - [X] MT-1.4.2: Implementar `func add_step(what: Callable, delay_after: float = 0.5) -> EventChain` (retorna self para chaining). Implementar `func clear()`
-  - [X] MT-1.4.3: Implementar `func play()`: itera `_steps`, para cada um chama `callable.call()`, depois `await get_tree().create_timer(delay_after).timeout`. Sinal `chain_completed` ao final. Var `_playing: bool` para evitar dupla execução
-  - [X] MT-1.4.4: Criar cena de teste com 4 Labels que aparecem em sequência com 0.5s entre cada, usando EventChain para orquestrar
-- **Criterios de Aceitacao:**
-  1. Steps executam na ordem com delays corretos
-  2. `chain_completed` emitido ao final
-  3. Chamar `play()` durante execução é ignorado
-  4. Funções arbitrárias podem ser steps (Callable genérico)
-- **Classificacao:** Confirmado
-
-#### Tarefa 1.5: Protagonista Reutilizável
-- **Descricao:** Cena e script base da protagonista para clique-to-move com margens por fase e gatilho de chegada
-- **Diretorio:** /scenes/components/ e /scripts/components/
-- **Observacao de continuidade:** `protagonist.tscn` ja existe no workspace. O hub ainda usa uma protagonista provisoria hardcoded em `main_menu.tscn` + `main_menu_controller.gd`. Os proximos MTs desta tarefa e os MTs `2.1.6` + `2.2.6` devem convergir o projeto para uma unica protagonista reutilizavel
-- **Micro-Tasks:**
-  - [x] MT-1.5.1: Criar `protagonist.tscn` como cena reutilizável da protagonista. Root `Node2D`, visual placeholder e suporte às animações `idle`, `walking`, `interact`
-  - [X] MT-1.5.2: Criar `protagonist_actor.gd` com API de movimento por clique/toque. Exports mínimos: `move_speed`, `arrival_threshold`, `margin_top`, `margin_bottom`, `margin_left`, `margin_right`
-  - [X] MT-1.5.3: Implementar sinal de chegada (`destination_reached` ou equivalente) para que controllers disparem ações somente após a protagonista alcançar o alvo. O destino deve ser clampado pelas margens da fase
-  - [X] MT-1.5.4: Criar cena de teste dedicada validando `idle`, `walking`, clamp por margens e a regra de não usar `interact` por padrão
-- **Criterios de Aceitacao:**
-  1. A protagonista responde a mouse e touch
-  2. O movimento respeita margens configuráveis da fase
-  3. Controllers conseguem esperar a chegada antes de executar uma ação
-  4. `interact` não é disparada automaticamente em toda ação contextual
-- **Classificacao:** Confirmado
-
-**Checkpoint FASE 1:** 4 componentes funcionam isoladamente em cenas de teste. Hotspot responde a touch, Draggable faz snap, Revealer anima cor, EventChain orquestra sequência, e a Tarefa 1.5 fecha a base reutilizável da protagonista antes da integração no hub e nas salas.
-
----
-
-### FASE 2: Sala Principal — Hub/Menu
-**Objetivo:** Criar a sala principal antes das salas jogáveis. Ela funciona como menu diegético, gate de progressão e primeira integração real da protagonista
-**Subsistemas cobertos:** GameManager + Hotspot + GPUParticles2D + protagonista + fluxo de navegação
-
-#### Tarefa 2.1: Layout da Sala Principal
-- **Descricao:** Montar a sala central com 4 saídas cardeais, uma para cada sala do jogo, já prevendo a circulação da protagonista
-- **Diretorio:** /scenes/ui/ ou /scenes/rooms/
-- **Micro-Tasks:**
-  - [X] MT-2.1.1: Criar `main_menu.tscn` como a sala principal. Root `Node2D`. Adicionar fundo/placeholder da sala central
-  - [X] MT-2.1.2: Posicionar 4 portas/corredores com leitura espacial fixa: direita = Sala 1 COLETE, baixo = Sala 2 ORGANIZE, esquerda = Sala 3 SOBREVIVA, cima = Sala Final
-  - [X] MT-2.1.3: Adicionar `Hotspot` ou `Area2D + CollisionShape2D` para cada porta com ids `door_1`, `door_2`, `door_3`, `door_4`
-  - [X] MT-2.1.4: Adicionar partículas de névoa (`GPUParticles2D`) nas portas bloqueadas. Estado inicial: só a porta da direita fica livre; baixo, esquerda e cima começam bloqueadas com névoa
-  - [X] MT-2.1.5: Adicionar feedback visual para portas concluídas/passadas (apagada, fechada ou sem destaque), deixando claro que não podem ser reentradas
-  - [X] MT-2.1.6: Instanciar `protagonist.tscn` no hub com posição inicial, ordem de render e margens de navegação da sala principal, substituindo o node provisório `CanvasLayer/Protagonist` de `main_menu.tscn`. Não manter duas protagonistas em paralelo
-- **Criterios de Aceitacao:**
-  1. Cena renderiza em 540x960 sem cortes
-  2. A leitura espacial das portas é clara
-  3. Só a porta da direita está acessível no início
-  4. Toda porta bloqueada exibe névoa visível
-  5. A protagonista existe visualmente na sala principal e consegue circular sem depender de colisão de cenário
-- **Classificacao:** Confirmado
-
-#### Tarefa 2.2: Controller da Sala Principal
-- **Descricao:** Script que lê o progresso salvo no `GameManager`, liga/desliga as portas corretamente e orquestra o movimento da protagonista no hub
-- **Diretorio:** /scripts/rooms/
-- **Observacao de continuidade:** no estado atual do workspace, `main_menu_controller.gd` concentra lógica provisória de movimento/animação da protagonista do hub. Ao executar `MT-1.5.2`, `MT-1.5.3`, `MT-2.1.6` e `MT-2.2.6`, migrar o hub para usar `protagonist.tscn` + `protagonist_actor.gd`, removendo a duplicação do controller
-- **Micro-Tasks:**
-  - [X] MT-2.2.1: Criar `main_menu_controller.gd` extends `Node2D`. `@onready` refs para as 4 portas, os 4 emissores de névoa e a protagonista
-  - [X] MT-2.2.2: Implementar `_refresh_doors_state()` usando `GameManager.rooms_completed` e `GameManager.get_next_room_to_unlock()`
-  - [X] MT-2.2.3: Regra da sala principal: só a próxima sala da sequência pode ser acessada. Salas futuras ficam bloqueadas com névoa. Salas já concluídas ficam inacessíveis e sem reentrada
-  - [X] MT-2.2.4: Conectar clique/toque da porta liberada para uma ação contextual de navegação. O controller deve mandar a protagonista caminhar até a porta clicada e só então chamar `GameManager.transition_to_room(target_room_id)`. Clique em porta bloqueada ou já concluída não faz transição
-  - [X] MT-2.2.5: Opcional: feedback sutil em porta bloqueada (som abafado, tremida leve ou flash de névoa), sem quebrar a regra de progressão
-  - [X] MT-2.2.6: Implementar clique/toque global no chão do hub para mover a protagonista livremente sem trocar de sala. Se o clique for numa porta liberada, a troca de cena continua pendente até a protagonista chegar. Nesta etapa, remover o uso automático de `interact` no hub; o fluxo padrão deve ser `walking -> idle -> troca de cena`
-- **Criterios de Aceitacao:**
-  1. Início do jogo: apenas Sala 1 disponível
-  2. Após concluir Sala 1: Sala 1 não pode mais ser aberta e Sala 2 é desbloqueada
-  3. Após concluir Sala 2: Sala 3 é desbloqueada
-  4. Após concluir Sala 3: a porta de cima (Sala Final) é desbloqueada
-  5. Não existe caminho para entrar em sala futura nem para repetir sala concluída
-  6. A troca de sala no hub nunca é instantânea: ela só acontece depois que a protagonista alcança a porta
-- **Classificacao:** Confirmado
-
-#### Tarefa 2.3: Integração de Progressão
-- **Descricao:** Ajustar o fluxo global para que toda conclusão volte para a sala principal antes da próxima porta abrir
-- **Diretorio:** /scripts/core/ e /scenes/ui/
-- **Micro-Tasks:**
-  - [X] MT-2.3.1: Executar a refatoração descrita em `MT-0.2.9` no `GameManager`
-  - [X] MT-2.3.2: Fazer `GameManager.complete_room(1..3)` retornar para `main_menu.tscn` após marcar a sala como concluída
-  - [X] MT-2.3.3: Manter `GameManager.complete_room(4)` levando para `final_screen.tscn`
-  - [x] MT-2.3.4: Criar ou adaptar cena de teste para validar o loop `hub -> sala -> hub`
-- **Criterios de Aceitacao:**
-  1. O fluxo real do jogo passa sempre pela sala principal entre as salas
-  2. A progressão respeita a ordem direita → baixo → esquerda → cima
-  3. O estado visual das portas acompanha corretamente `rooms_completed`
-- **Classificacao:** Confirmado
-
-**Checkpoint FASE 2:** Sala principal funcional como hub. Progressão e bloqueios estão corretos. Antes de considerar a integração da protagonista do hub encerrada, substituir a implementação provisória por `protagonist.tscn` + `protagonist_actor.gd` e fechar `MT-2.1.6` + `MT-2.2.6`.
-
----
-
-### FASE 3: Sala 1 — COLETE
-**Objetivo:** Primeira sala jogável completa, validando protagonista + Hotspot + Revealer + EventChain em contexto real
-**Subsistemas cobertos:** Protagonista + Hotspot + Revealer + EventChain + GameManager
-
-#### Tarefa 3.1: Layout da Cena
-- **Descricao:** Montar o jardim com uma arte base única, 4 layers fullscreen de flores recortadas e pontos de ação para a protagonista
-- **Diretorio:** /scenes/rooms/
-- **Micro-Tasks:**
-  - [X] MT-3.1.1: Expandir/substituir o placeholder de `room_1.tscn` com `Node2D` root. Adicionar fundo base do jardim em `TextureRect` fullscreen, no mesmo padrão visual prático adotado no hub
-  - [X] MT-3.1.2: Adicionar 4 `TextureRect` fullscreen para as layers de flores (rosa, hibisco, lírio, girassol), cada uma recortada da arte base com o mesmo tamanho do background e transparência fora da região da flor. Cada layer recebe um filho `Revealer` com `start_hidden = true`, usando `modulate` para revelar apenas a flor correspondente
-  - [X] MT-3.1.3: Adicionar a protagonista na sala, uma flor-origem central em fila (hibisco -> rosas vermelhas -> lirios -> girassois), com cada flor aparecendo sob demanda no centro. `Presente` comeca invisivel e `Furao` comeca oculto. Nao criar `bolo` separado: o payoff central usa o `Center` e o `Background` ja preparado
-  - [X] MT-3.1.4: Adicionar 4 `Hotspot` (Area2D + CollisionShape2D) alinhados exatamente as mascaras das flores recortadas e 4 `Marker2D`/pontos de aproximacao para a protagonista. Configurar `hotspot_id` como "rosa", "hibisco", "lirio", "girassol", `one_shot = true` e deixar somente o hotspot inicial habilitado; os demais ficam sob demanda
-  - [X] MT-3.1.5: Em vez de overlay escuro, adicionar 4 highlights sutis de destino, um por flor, invisiveis no inicio e usados somente quando a flor correspondente estiver em transito/na mao da protagonista
-- **Criterios de Aceitacao:**
-  1. Cena renderiza em 540x960 sem cortes
-  2. Flores centrais e `Presente` comecam ocultos; `Furao` comeca oculto; os destinos usam highlights sutis sob demanda
-  3. Fundo e 4 layers de flores permanecem alinhados pixel a pixel
-  4. 4 hotspots posicionados e com collision shapes
-- **Classificacao:** Confirmado
-
-#### Tarefa 3.2: Controller da Sala 1
-- **Descricao:** Script que conecta hotspots, protagonista e revealers, orquestrando a lógica de restaurar as flores
-- **Diretorio:** /scripts/rooms/
-- **Micro-Tasks:**
-  - [X] MT-3.2.1: Criar `room_1_controller.gd` extends `Node2D` (root da cena). `@onready` refs para os 4 Hotspots, 4 layers de flores com Revealer, fila central de flores (`FlowerOrigin` + 4 sprites), 4 `ApproachMarker`, 4 destination hints sutis, protagonista, `Center`, `Presente` e `Furao`. Vars minimas: `_flowers_restored: int = 0`, `_current_flower_index: int = 0`
-  - [X] MT-3.2.2: No `_ready`, mostrar somente a primeira flor da fila central e habilitar apenas o hotspot correspondente. Ao clicar no hotspot ativo, o controller deve: (1) mostrar o hint sutil do destino correspondente, (2) mandar a protagonista ir primeiro ate a flor central atual, (3) depois ate o `ApproachMarker` do alvo, (4) ao chegar, esconder a flor central atual, desligar o hint, revelar a layer correspondente, tocar SFX via `AudioManager.play_sfx(...)`, incrementar `_flowers_restored` e habilitar/mostrar a proxima flor da fila. Se `_flowers_restored == 4`, chamar `_start_finale()`
-  - [X] MT-3.2.3: Implementar `_start_finale()` usando `EventChain`: criar instancia (ou no ja na cena), popular com steps: (1) tocar som suave, (2) rodar `Background` na animacao `surprise` (`GardenSurprise`), (3) ocultar `Center` para expor o payoff central do fundo, (4) fazer `Presente` aparecer com fade no ponto mais baixo configurado, (5) setar `Furao.visible = true` com scale de 0→1, (6) chamar `GameManager.complete_room(1)`. Conectar `chain_completed` se necessario
-  - [X] MT-3.2.4: Testar fluxo completo: primeira flor aparece no centro → hotspot correspondente eh o unico ativo → protagonista vai ao centro → protagonista leva a flor ao alvo com hint sutil ativo → reveal da camada correta → proxima flor aparece → apos 4/4 toca `GardenSurprise`, `Center` some, `Presente` faz fade in e retorna para a sala principal
-- **Criterios de Aceitacao:**
-  1. Cada hotspot revela somente a layer da flor correspondente e so fica ativo no seu turno
-  2. Cada restauracao so acontece depois que a protagonista completa o trajeto centro -> alvo
-  3. A proxima flor so aparece depois que a anterior for entregue corretamente
-  4. A sequencia final executa `GardenSurprise`, oculta `Center`, faz `Presente` aparecer com fade e revela `Furao`
-  5. Ao final, `GameManager` retorna para a Sala Principal liberando a Sala 2
-  6. Hotspots concluidos permanecem desativados apos uso (`one_shot`)
-- **Classificacao:** Confirmado
-
-**Checkpoint FASE 3:** Sala 1 jogavel do inicio ao fim. A fila central de flores funciona em ordem, os hotspots/hints acompanham a flor ativa, `GardenSurprise` roda ao concluir 4/4, `Center` some no payoff, `Presente` entra com fade, `Furao` aparece e o retorno ao hub funciona.
-
----
-
-### FASE 4: Sala 2 — ORGANIZE
-**Objetivo:** Implementar uma Sala 2 simplificada usando os assets já prontos, substituindo 3 minigames separados por 3 interações rápidas integradas à própria cena
-**Subsistemas cobertos:** Protagonista + Hotspot + Draggable + DropZone + Revealer + EventChain + AnimatedSprite2D
-
-#### Tarefa 4.1: Cena Base e Controller da Sala 2
-- **Descricao:** Montar a casa bagunçada usando `Room2BackGround.png`, `Room2Masc.png` e `Room2Objects.png`, com um controller único que orquestra as 3 tarefas de organização e o gating por aproximação da protagonista
-- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
-- **Micro-Tasks:**
-  - [X] MT-4.1.1: Criar `room_2.tscn` com root `Node2D`, protagonista, fundo limpo usando `res://assets/sprites/Room2BackGround.png`, overlay de sujeira usando `res://assets/sprites/Room2Masc.png`, layers/recortes de `res://assets/sprites/Room2Objects.png` para os estados antes/depois de louça, roupa e cadeira, 3 zonas clicáveis (`dishes`, `clothes`, `sweep`) e 3 `Marker2D` de aproximação
-  - [X] MT-4.1.2: Criar `room_2_controller.gd` com `var _tasks_done: Dictionary = {"dishes": false, "clothes": false, "sweep": false}` e `var _active_task: String = ""`. Ao clicar numa zona livre, a protagonista vai até o marker correspondente e só então a tarefa daquela zona é habilitada
-  - [X] MT-4.1.3: Implementar no controller a trava de tarefa ativa, a conclusão de cada tarefa, a troca visual "sujo -> limpo" via `Room2Objects.png`, e o gatilho `_start_transformation()` quando `dishes`, `clothes` e `sweep` estiverem concluídas
-- **Criterios de Aceitacao:**
-  1. Cena renderiza corretamente com os assets finais da Room 2
-  2. Controller rastreia o progresso das 3 tarefas
-  3. As tarefas podem ser feitas em qualquer ordem
-  4. Nenhuma tarefa abre instantaneamente no clique; sempre espera a chegada da protagonista
-  5. Só existe uma tarefa ativa por vez
-- **Classificacao:** Confirmado (correção de escopo)
-
-#### Tarefa 4.2: Interação Louça
-- **Descricao:** Limpeza curta da louça integrada à própria cena, sem minigame separado, usando os itens já prontos em `Room2Items.png`
-- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
-- **Micro-Tasks:**
-  - [X] MT-4.2.1: Após a protagonista alcançar a zona da pia, habilitar a interação de louça usando `res://assets/sprites/Room2Items.png`: prato, overlay de sujeira e esponja. A limpeza deve remover a sujeira do prato sem criar cena ou script exclusivo em `/scripts/rooms/room_2/`
-  - [X] MT-4.2.2: Ao concluir a interação, atualizar o estado visual de "louça suja" para "louça" em `Room2Objects.png`, marcar `_tasks_done["dishes"] = true` e impedir repetição
-- **Criterios de Aceitacao:**
-  1. A louça só pode ser limpa depois da aproximação da protagonista
-  2. A interação usa apenas os assets já prontos da Room 2
-  3. Ao concluir, o estado visual da pia muda de sujo para limpo
-- **Classificacao:** Confirmado (correção de escopo)
-
-#### Tarefa 4.3: Interação Roupa
-- **Descricao:** Organização rápida de roupas integrada à cena, reaproveitando `Draggable` e `DropZone` em vez de um minigame dedicado
-- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
-- **Micro-Tasks:**
-  - [X] MT-4.3.1: Após a protagonista alcançar a zona de roupa, instanciar/ativar 3 roupas a partir de `res://assets/sprites/Room2Items.png` como `Draggable` e 1 cesto como `DropZone`, sem criar script exclusivo de minigame
-  - [X] MT-4.3.2: Conectar os drops bem-sucedidos no `room_2_controller.gd`; quando 3/3 roupas entrarem no cesto, atualizar o estado visual de "roupa suja" para "roupa" em `Room2Objects.png`, marcar `_tasks_done["clothes"] = true` e impedir repetição
-- **Criterios de Aceitacao:**
-  1. A roupa só pode ser organizada depois da aproximação da protagonista
-  2. As roupas usam `Draggable`/`DropZone` existentes
-  3. Ao concluir, o estado visual muda de roupa suja para roupa organizada
-  4. Soltar fora do cesto continua respeitando o snap back do componente reutilizável
-- **Classificacao:** Confirmado (correção de escopo)
-
-#### Tarefa 4.4: Interação Vassoura
-- **Descricao:** Limpeza contínua dos 4 cantos sujos usando a máscara pronta da Room 2, sem construir um terceiro minigame dedicado
-- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
-- **Micro-Tasks:**
-  - [X] MT-4.4.1: Após a protagonista alcançar a zona de varrer, ativar a vassoura de `res://assets/sprites/Room2Items.png` e usar `res://assets/sprites/Room2Masc.png` como sujeira dos 4 cantos, reduzindo a máscara conforme a limpeza
-  - [X] MT-4.4.2: Quando os 4 cantos estiverem limpos, ocultar a máscara de sujeira, atualizar a cadeira para a versão organizada em `Room2Objects.png`, marcar `_tasks_done["sweep"] = true` e impedir repetição
-- **Criterios de Aceitacao:**
-  1. A vassoura só é ativada depois da aproximação da protagonista
-  2. A sujeira dos 4 cantos é removida usando `Room2Masc.png`
-  3. Ao concluir, a cadeira muda para o estado organizado
-- **Classificacao:** Confirmado (correção de escopo)
-
-#### Tarefa 4.5: Transformação Final da Sala 2
-- **Descricao:** Depois das 3 tarefas concluídas, tocar a animação pronta de transformação e entrar no loop final antes de retornar ao hub
-- **Diretorio:** /scenes/rooms/ e /scripts/rooms/
-- **Micro-Tasks:**
-  - [X] MT-4.5.1: Preparar na cena a animação única de transformação com `res://assets/sprites/Room2Transition1024x1536_7C3L.png` em `AnimatedSprite2D` ou estrutura equivalente, configurada como spritesheet 7 colunas x 3 linhas e executada uma única vez quando `_start_transformation()` for chamado
-  - [X] MT-4.5.2: Ao terminar a transição, trocar para o loop `res://assets/sprites/Room2Loop1024x1536_11C2L_S01.png` (11 colunas x 2 linhas), manter o estado final organizado visível por um breve beat emocional e então chamar `GameManager.complete_room(2)`
-- **Criterios de Aceitacao:**
-  1. A transição usa os assets finais já produzidos para a Room 2
-  2. O loop final entra automaticamente após a animação única
-  3. Ao final, retorno ao hub desbloqueando a Sala 3
-- **Classificacao:** Confirmado (correção de escopo)
-
-**Checkpoint FASE 4:** Sala 2 jogável com 3 tarefas rápidas integradas à mesma cena, todas iniciadas por aproximação da protagonista, usando os assets finais da Room 2, e a transição animada executa completamente antes de liberar a próxima porta no hub.
-
----
-
-### FASE 5: Sala 3 — SOBREVIVA + Sala Final
-**Objetivo:** Implementar a sala de tensão, retornar ao hub, e concluir com a última sala e a cena final, sempre usando a protagonista como agente das ações
-**Subsistemas cobertos:** Protagonista + BulletHell + BabyInteraction (Hotspot reutilizado) + Puzzle + Finale
-
-#### Tarefa 5.1: Sala 3 Parte 1 — Bullet Hell
-- **Descricao:** Mecânica de desvio de projéteis médicos por tempo limitado. A protagonista é quem sofre as colisões e sobrevive ao bullet hell
-- **Diretorio:** /scripts/rooms/room_3/ e /scenes/rooms/
-- **Micro-Tasks:**
-  - [X] MT-5.1.1: Criar `room_3.tscn` com fundo hospitalar escuro. Instanciar a protagonista como avatar controlado da fase e criar `Timer` de sobrevivência (15s, export var para ajuste)
-  - [X] MT-5.1.2: Criar `player_dodge.gd` como script especializado da protagonista no bullet hell: segue touch/mouse, clampa posição dentro das margens da fase e emite sinal `hit` ao detectar overlap com grupo "projectile"
-  - [X] MT-5.1.3: Criar `projectile.tscn`: `Area2D` no grupo "projectile" com sprite (seringa/placeholder), script `projectile.gd` com export `speed: float` e `direction: Vector2`. Move em `_process`. Se sair da tela (`VisibleOnScreenNotifier2D`), `queue_free()`
-  - [x] MT-5.1.4: Criar `bullet_spawner.gd`: Timer de spawn (0.4s-0.8s). Instancia `projectile.tscn` em posições aleatórias nas bordas com direção para dentro. Export `spawn_rate_range: Vector2` para variação
-  - [X] MT-5.1.5: No controller `room_3_controller.gd`: ao script da protagonista emitir `hit`, flash vermelho (Tween modulate) + breve invencibilidade (0.5s). NÃO é game over. Quando timer de sobrevivência acaba, spawner para, projéteis restantes fazem fade out e chama `_transition_to_nursery()`
-- **Criterios de Aceitacao:**
-  1. Player segue dedo responsivamente
-  2. Projéteis vêm de bordas variadas
-  3. Hit = feedback visual, NÃO morte
-  4. Após 15s (configurável), fase termina automaticamente
-  5. Sem memory leak de projéteis
-- **Classificacao:** Confirmado
-
-#### Tarefa 5.2: Sala 3 Parte 2 — Quarto do Ravi
-- **Descricao:** Transição emocional para interação suave com o bebê. A interação só começa quando a protagonista alcança o Ravi
-- **Diretorio:** /scripts/rooms/room_3/
-- **Micro-Tasks:**
-  - [ ] MT-5.2.1: Implementar `_transition_to_nursery()` usando EventChain: (1) fade out elementos hospitalares, (2) trocar fundo para quarto do bebê, (3) mudar tom musical (AudioManager — mesma track mas volume ajustado ou track alternativa mais calma), (4) revelar sprite do Ravi no centro
-  - [ ] MT-5.2.2: Criar `baby_interaction.gd`: clique/toque no Ravi primeiro move a protagonista até o bebê. Só quando ela chega a interação fica ativa. Cada `pressed` válido gera `Sprite2D` de coração na posição do toque com Tween (sobe + fade out em 1s, depois `queue_free`), toca SFX fofo (varia entre 2-3 sons aleatórios) e incrementa `_touch_count: int`. Após 5+ toques, mostrar botão/indicador sutil de "→" (próxima)
-  - [ ] MT-5.2.3: Botão de próximo chama `GameManager.complete_room(3)`. Garantir que não aparece antes de 5 toques para que jogador interaja minimamente
-- **Criterios de Aceitacao:**
-  1. Contraste emocional brutal: tensão → paz
-  2. Corações sobem e somem suavemente
-  3. Sons fofos não repetitivos (rodar entre variações)
-  4. Saída disponível após interação mínima mas sem pressa
-  5. Ao concluir, retorno ao hub desbloqueando a porta de cima
-- **Classificacao:** Confirmado (mecânica de saída: Assuncao — botão após 5 toques)
-
-#### Tarefa 5.3: Sala Final — Puzzle do Coração
-- **Descricao:** Última sala do hub. A protagonista coleta as peças espalhadas, leva o coração ao centro e só então o minigame de montagem é aberto
-- **Diretorio:** /scripts/rooms/room_4/ e /scenes/rooms/
-- **Micro-Tasks:**
-  - [ ] MT-5.3.1: Criar `room_4.tscn` com fundo escuro, protagonista, sprite do garoto chorando no centro-baixo e a área central onde o coração será montado. Posicionar 5-7 peças do coração espalhadas pelo cenário como alvos de coleta
-  - [ ] MT-5.3.2: Implementar a etapa de coleta: ao clicar numa peça, a protagonista vai até ela, coleta a peça e atualiza o progresso. Depois que todas forem coletadas, clicar/acionar a área central faz a protagonista levar o coração ao centro
-  - [ ] MT-5.3.3: Criar `room_4_controller.gd`: rastrear `_pieces_collected: int`, reagir à coleta de peças e, quando todas tiverem sido recolhidas, abrir o minigame de montagem apenas quando a protagonista alcançar a área central. Durante o progresso, o garoto chora menos (sprite muda ou lágrimas reduzem)
-  - [ ] MT-5.3.4: Dentro do minigame de montagem, usar `DropZone` com `accepted_id` para que cada peça encaixe apenas no slot correto. Se `accepted_id != ""` e `drag_id` não corresponde, rejeitar o drop (snap back)
-- **Criterios de Aceitacao:**
-  1. A protagonista precisa realmente se mover até as peças para coletá-las
-  2. O minigame de montagem só abre depois que a protagonista chega ao centro com o coração
-  3. Peças encaixam apenas nos slots corretos
-  4. Garoto reage progressivamente
-  5. Todas peças montadas = finale
-- **Classificacao:** Confirmado
-
-#### Tarefa 5.4: Final do Jogo
-- **Descricao:** Sequência emotiva que encerra o jogo. EventChain mais longa
-- **Diretorio:** /scripts/rooms/room_4/ e /scenes/ui/
-- **Micro-Tasks:**
-  - [ ] MT-5.4.1: Implementar `_trigger_finale()` no room_4_controller usando EventChain: (1) garoto para de chorar (sprite muda), (2) fade out cenário escuro, (3) `AudioManager.play_bgm("finale")` (crossfade para Goo Goo Dolls), (4) fade in cenário do passeio, (5) spawnar os dois personagens, (6) animação de "tirar foto" (Tween sutil), (7) flash branco (ColorRect alpha 0→1→0 rápido), (8) freeze 1.5s, (9) transição para tela final
-  - [ ] MT-5.4.2: Criar `final_screen.tscn`: CanvasLayer com background preto, `TextureRect` centralizada para a imagem/foto final (fade in lento, 2s). Música continua. Texto de dedicatória opcional (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo — tap anywhere após 5s faz fade to black e volta ao início ou fecha
-  - [ ] MT-5.4.3: Implementar script `final_screen.gd`: lógica mínima — fade in da imagem, detectar tap para encerrar (com guard de 5s para não encerrar acidentalmente)
-- **Criterios de Aceitacao:**
-  1. Crossfade musical sincronizado
-  2. "Flash da foto" é satisfatório
-  3. Imagem final é o payoff emocional
-  4. Nenhuma UI estraga o momento
-  5. Jogo tem encerramento digno
-- **Classificacao:** Confirmado
-
-**Checkpoint FASE 5:** Todas as salas periféricas jogáveis. A sequência hub → 1 → hub → 2 → hub → 3 → hub → final funciona, com a protagonista como agente de movimento, colisão, coleta e abertura das ações finais.
-
----
-
-### FASE 6: Fluxo Completo, Polimento e Android
-**Objetivo:** Integrar tudo, polir a leitura do hub e exportar para Android
-**Subsistemas cobertos:** Hub, fluxo, UX, export
-
-#### Tarefa 6.1: Polimento da Sala Principal
-- **Descricao:** Refinar feedback visual e clareza de progressão da sala central
-- **Diretorio:** /scenes/ui/ e /scripts/rooms/
-- **Micro-Tasks:**
-  - [ ] MT-6.1.1: Ajustar intensidade, cor e direção das partículas de névoa nas portas bloqueadas
-  - [ ] MT-6.1.2: Garantir leitura clara dos três estados de porta: disponível, bloqueada, concluída/passada
-  - [ ] MT-6.1.3: Ajustar transições visuais entre retorno ao hub e abertura da próxima porta
-- **Criterios de Aceitacao:**
-  1. O jogador entende imediatamente qual é a próxima porta
-  2. Portas bloqueadas parecem inacessíveis
-  3. Portas concluídas não geram ambiguidade
-- **Classificacao:** Confirmado
-
-#### Tarefa 6.2: Playtest de Fluxo Completo
-- **Descricao:** sala principal -> Sala 1 -> sala principal -> Sala 2 -> sala principal -> Sala 3 -> sala principal -> Sala Final -> tela final sem bugs, validando sempre o gating por aproximação da protagonista
-- **Diretorio:** N/A (processo)
-- **Micro-Tasks:**
-  - [ ] MT-6.2.1: Testar fluxo completo no editor (mouse). Anotar bugs
-  - [ ] MT-6.2.2: Corrigir bugs encontrados
-  - [ ] MT-6.2.3: Ajustar timings de animações e delays baseado no feel
-  - [ ] MT-6.2.4: Verificar que nenhum estado morto existe (sempre há caminho para frente)
-- **Criterios de Aceitacao:**
-  1. Zero crashes
-  2. Zero dead-ends
-  3. Fluxo emocional coerente
-- **Classificacao:** Confirmado
-
-#### Tarefa 6.3: Export Android
-- **Descricao:** Configurar e gerar APK funcional
-- **Diretorio:** /
-- **Micro-Tasks:**
-  - [ ] MT-6.3.1: Instalar export templates Android. Configurar keystore de debug. Criar preset de export com orientação portrait-only
-  - [ ] MT-6.3.2: Gerar APK de debug
-  - [ ] MT-6.3.3: Instalar em device real. Testar: touch responsivo em todos componentes e fluxos da protagonista (clique-to-move, hotspot, drag, sweep, tap rápido, portas do hub), aspect ratio, áudio, performance
-  - [ ] MT-6.3.4: Ajustes finais baseados no teste em device (tamanhos de hitbox, velocidade de drag, densidade da névoa, etc)
-- **Criterios de Aceitacao:**
-  1. APK instala e roda
-  2. Touch funciona em todas mecânicas
-  3. Sem frame drops perceptíveis
-  4. Áudio não corta
-- **Classificacao:** Confirmado
-
-**Checkpoint FASE 6:** Jogo completo e jogável em Android. Pronto para presentear.
-
----
-
-## ARQUIVOS_AFETADOS
-
-### /scripts/core/:
-- CRIAR | `game_manager.gd` | Estado, progressão, transições de cena, fade
-- CRIAR | `game_manager_test.gd` | Script da cena mínima de teste do GameManager
-- CRIAR | `audio_manager.gd` | BGM crossfade, SFX
-
-### /scripts/components/:
-- CRIAR | `hotspot.gd` | Área clicável genérica (touch+mouse)
-- CRIAR | `draggable.gd` | Objeto arrastável genérico
-- CRIAR | `drop_zone.gd` | Zona alvo para drag-and-drop
-- CRIAR | `revealer.gd` | Transição escuro→cor
-- CRIAR | `event_chain.gd` | Sequenciador de eventos timed
-- CRIAR | `protagonist_actor.gd` | Movimento reutilizável da protagonista, margens por fase e gatilho de chegada
-
-### /scripts/rooms/:
-- CRIAR | `main_menu_controller.gd` | Controller da sala principal / hub de progressão
-- CRIAR | `room_1_controller.gd` | Orquestrador Sala 1
-- CRIAR | `room_2_controller.gd` | Orquestrador Sala 2
-- CRIAR | `room_3_controller.gd` | Orquestrador Sala 3
-- CRIAR | `room_4_controller.gd` | Orquestrador da Sala Final
-
-### /scripts/rooms/room_2/:
-- NAO_CRIAR | scripts dedicados da versão antiga (`sweep_brush.gd`, `dust_spot.gd`, `minigame_sweep.gd`, `dish.gd`, `minigame_dishes.gd`, `minigame_clothes.gd`) | Na Fase 4 simplificada, a lógica fica centralizada em `room_2_controller.gd` e reaproveita componentes já existentes
-
-### /scripts/rooms/room_3/:
-- CRIAR | `player_dodge.gd` | Script especializado da protagonista no bullet hell
-- CRIAR | `projectile.gd` | Projétil médico
-- CRIAR | `bullet_spawner.gd` | Spawner de projéteis
-- CRIAR | `baby_interaction.gd` | Interação de carinho
-
-### /scripts/rooms/room_4/:
-- CRIAR | `final_screen.gd` | Lógica da tela final
-
-### /scenes/rooms/:
-- CRIAR | `room_1.tscn` | Placeholder mínimo na Fase 0, expandido para Jardim das flores na Fase 3
-- CRIAR | `room_2.tscn` | Casa bagunçada
-- CRIAR | `room_3.tscn` | Hospital → quarto
-- CRIAR | `room_4.tscn` | Sala Final / puzzle do coração
-
-### /scenes/ui/:
-- CRIAR | `main_menu.tscn` | Sala principal / hub de progressão
-- CRIAR | `test_game_manager_transition.tscn` | Cena de teste do fluxo de transição e retorno ao hub
-- CRIAR | `final_screen.tscn` | Tela final com foto
-- CRIAR | `test_protagonist.tscn` | Cena de teste do clique-to-move da protagonista e das margens
-
-### /scenes/components/:
-- CRIAR | `projectile.tscn` | Cena do projétil (instanciável)
-- CRIAR | `protagonist.tscn` | Cena reutilizável da protagonista
-### /assets/:
-- CRIAR | `sprites/` | Placeholder sprites para todas salas
-- CRIAR | `audio/` | Tracks musicais e SFX
-
----
-
-## INVARIANTES
-
-| ID | Invariante | Origem | Violação detectável por |
-|----|------------|--------|-------------------------|
-| INV-1 | `GameManager.current_room` sempre reflete a sala visível; valor `0` representa a sala principal | Fluxo de jogo | Assert em `transition_to_room` e no retorno ao hub |
-| INV-2 | BGM nunca para abruptamente — sempre crossfade | UX emocional | AudioManager.play_bgm sempre usa Tween |
-| INV-3 | Todo estado de jogo tem caminho para avançar (zero dead-ends) | Game design | Cada controller tem path garantido para `complete_room`; no hub existe exatamente uma próxima porta válida |
-| INV-4 | Componentes reutilizáveis não conhecem salas — zero referências a room_* em scripts de /components/ | Arquitetura | Inspeção: nenhum import/ref a rooms em components |
-| INV-5 | Input funciona em touch E mouse para todo componente interativo | Plataforma Android + dev | Hotspot e Draggable tratam ambos InputEvent types |
-| INV-6 | Projéteis são sempre destruídos ao sair da tela | Performance | VisibleOnScreenNotifier2D + queue_free |
-| INV-7 | Portas bloqueadas da sala principal sempre exibem névoa; a porta liberada nunca exibe névoa | UX / progressão | `_refresh_doors_state()` no controller do hub |
-| INV-8 | Ações contextuais só disparam depois que a protagonista alcança o alvo associado | Fluxo diegético | Controllers aguardam sinal de chegada antes de trocar de sala, coletar, iniciar minigame ou abrir puzzle |
-| INV-9 | O movimento da protagonista é limitado por margens da fase, não por colisão de cenário | Navegação | Destino e/ou posição final sempre são clampados por `margin_top/bottom/left/right` |
-
-## PRECONDICOES
-
-| Operação | Condição | Verificação | Se falsa |
-|----------|----------|-------------|----------|
-| `transition_to_room(id)` | `id` entre 1-4 E `state != TRANSITIONING` E (`can_enter_room(id)` quando origem for o hub) | Guard no início da função | Ignora chamada, loga warning |
-| `complete_room(id)` | `id == current_room` E room não já completa | Checar `rooms_completed` | Ignora chamada duplicada |
-| `play_bgm(track_key)` | `track_key` existe em `TRACKS` dict | `TRACKS.has(track_key)` | Loga warning, mantém track atual |
-| `Draggable._on_dropped()` | `_dragging == true` | Checado antes do processing | Não processa drop |
-| `EventChain.play()` | `_playing == false` | Guard no início | Ignora segunda chamada |
-| ação contextual de sala | protagonista já alcançou o alvo/marker da ação | controller espera sinal de chegada | ação fica pendente, mas não executa antes |
-
-## POSCONDICOES
-
-| Operação | Garantia | Verificação |
-|----------|----------|-------------|
-| `transition_to_room(id)` | Cena nova visível, fade completo, state == PLAYING | Sinal `transition_finished` emitido |
-| `complete_room(id)` | Dict atualizado, hub recarregado se `id < 4` ou final mostrado se `id == 4` | `rooms_completed[id] == true` |
-| `Revealer.reveal()` | Parent.modulate == revealed_color | Sinal `revealed` emitido |
-| `EventChain.play()` | Todos steps executados na ordem | Sinal `chain_completed` emitido |
-| Bullet hell timer expira | Spawner parado, projéteis removidos | Zero nós no grupo "projectile" |
-| comando de movimento da protagonista | destino respeita margens da fase e sinal de chegada é emitido ao final | controller recebe o callback/sinal antes de disparar ação contextual |
-
-## CASOS_DE_BORDA
-
-| Caso | Comportamento Esperado |
-|------|------------------------|
-| Tap duplo rápido em Hotspot one_shot | Apenas primeira coleta registrada (active=false após primeiro) |
-| Tap em porta bloqueada no hub | Nada acontece além do feedback opcional; sem transição |
-| Tap em porta já concluída | Sala não reabre; estado permanece bloqueado |
-| Soltar Draggable fora de qualquer DropZone | Tween de volta para posição original |
-| Soltar Draggable em DropZone errada (Sala Final) | Rejeitado pelo `accepted_id`, snap back |
-| Minimizar app durante EventChain | Godot pausa, retoma onde parou (SceneTree.paused) |
-| Touch com múltiplos dedos | Draggable trava no primeiro touch_index; ignora outros |
-| Clicar durante transição (fade) | GameManager em state TRANSITIONING bloqueia input de salas |
-| Retorno ao hub após concluir uma sala | Porta concluída fica inacessível e a próxima porta correta é liberada |
-| Clique em porta liberada no hub | A protagonista caminha primeiro; a troca de sala só acontece quando ela chega |
-| Clique em alvo contextual de sala | A protagonista caminha primeiro; coleta, revelação ou minigame só começa ao chegar |
-| Projétil spawna quando timer já expirou | Spawner.stop() chamado antes — nenhum novo projétil |
-| Chamar reveal() em Revealer já revelado | Idempotente — nada acontece |
-| Áudio placeholder inexistente | AudioManager loga warning, jogo continua sem som |
-
-## MODOS_DE_FALHA
-
-| Falha | Resposta |
-|-------|----------|
-| Cena de sala não encontrada no path | GameManager loga erro, não crasha (guard com `ResourceLoader.exists`) |
-| `main_menu.tscn` ausente ou inválida | `GameManager.return_to_hub()` loga erro e mantém a cena atual |
-| AudioStream null no dict de tracks | AudioManager ignora com warning |
-| Projétil stuck dentro da tela (bug de posição) | Auto-destroy por lifetime timer (5s max) como fallback |
-| Draggable perde referência do DropZone | snap_back garante retorno à origem |
-| EventChain com Callable inválido | try/catch (ou verificar `is_valid()`) antes de call, skip step com warning |
-| `rooms_completed` inconsistente | `get_next_room_to_unlock()` cai para a primeira sala não concluída válida |
-| Touch não detectado em device | Hitboxes generosas (CollisionShape maior que sprite), testável em Tarefa 6.3 |
-
-## CHECKLIST_QUALIDADE
-
-| Eixo | Status | Nota |
-|------|--------|------|
-| Organização | Atendido | /core para managers, /components para reutilizáveis, /rooms para específicos. SRP por arquivo |
-| Design Principles | Atendido | KISS (mecânicas simples), DRY (4 componentes reutilizados nas salas), YAGNI (sem save, sem inventário) |
-| Modularity | Atendido | Componentes não conhecem salas (INV-4). Comunicação 100% por sinais |
-| Patterns | Atendido | Observer (sinais), Composition (nós Godot), Chain of Responsibility (EventChain) |
-| Coding | Atendido | Scripts curtos, nomes descritivos, exports para configuração |
-| Testability | Atendido | Cada componente tem cena de teste isolada (Fase 1). Managers testáveis independentemente |
-| Performance | Atendido | Pooling/destroy de projéteis, sem alocações em loop, Tweens ao invés de _process para animações |
-| UI Architecture | Atendido | View (cenas .tscn) separada de logic (scripts), controller por sala e para o hub |
-
----
-
-## ENTREGAVEIS
-
-- [ ] Estrutura de projeto criada (Fase 0)
-- [ ] GameManager e AudioManager funcionais como Autoload (Fase 0)
-- [ ] 4 componentes reutilizáveis + protagonista base testados isoladamente (Fase 1)
-- [ ] Sala principal / hub com portas bloqueadas por progressão e transição dependente da protagonista (Fase 2)
-- [ ] Sala 1 jogável, validando protagonista + reveal por modulate (Fase 3)
-- [ ] Sala 2 com 3 tarefas rápidas integradas à cena, iniciadas por aproximação da protagonista e concluídas com a transição animada final (Fase 4)
-- [ ] Sala 3 com bullet hell na protagonista + carinho (Fase 5)
-- [ ] Sala Final com coleta, puzzle e cena final emotiva (Fase 5)
-- [ ] Fluxo completo hub → salas → final sem bugs (Fase 6)
-- [ ] APK funcional testado em device Android (Fase 6)
-- [ ] INVARIANTES verificáveis no código
-- [ ] CASOS_DE_BORDA tratados
-- [ ] MODOS_DE_FALHA implementados
-- [ ] Estado: Pronto para presentear 🎁
-
----
-
-## NOTAS_DE_CERTEZA
-
-### Confirmado (GDD + alinhamento atual):
-- Sala principal funciona como hub/menu do jogo
-- Ordem espacial das portas no hub: direita = COLETE, baixo = ORGANIZE, esquerda = SOBREVIVA, cima = FINAL
-- Progressão linear: só entra na próxima sala liberada, sem reentrada em salas concluídas
-- A protagonista está presente no hub e em todas as salas jogáveis; ações contextuais só disparam por aproximação
-- O workspace já possui spritesheets da protagonista em `assets/sprites/` com prefixo `Kay` para `idle`, `walking` e `interact`
-- Estado atual do workspace: `protagonist.tscn` existe, mas o hub ainda usa uma protagonista provisória hardcoded em `main_menu.tscn` + `main_menu_controller.gd`; a migração para a cena reutilizável ainda precisa ser concluída
-- Mecânicas: coleta, varrer/louça/roupa, bullet hell + carinho, puzzle
-- Elementos: flores (rosa/hibisco/lírio/girassol), furão, bolo, cavalo, príncipe, Ravi, coração partido, foto final
-- Músicas: End of Beginning 8 bit (principal/hub), Goo Goo Dolls (Sala Final)
-- Plataforma: Android, 9:16, GDScript, Godot 4
-
-### Assuncao (inferido com base):
-- Resolução 540x960 (bom equilíbrio pixel art + detalhe para mobile)
-- Bullet hell sem game over (contexto emocional não combina com punição)
-- Saída da cena do bebê via botão sutil após 5 toques (mínimo de interação sem forçar)
-- Puzzle do coração com 5-7 peças (suficiente para desafio sem frustrar)
-- Timer do bullet hell: 15 segundos (curto, tenso, não cansativo)
-
-### Desconhecido (precisa confirmar):
-- Assets de pixel art: já existem ou serão criados? Impacta estimativa de tempo
-- Goo Goo Dolls: qual faixa especificamente? "Iris"?
-- Há textos/diálogos em algum momento ou é 100% visual?
-- O garoto da Sala Final representa alguém específico?
-- O furão tem nome?
-- Ravi: referência a nome real? Sprite de bebê genérico ou específico?
+<file path="rooms/room_3_controller.gd.uid">
+uid://y06l44u0x21o
 </file>
 
 </files>

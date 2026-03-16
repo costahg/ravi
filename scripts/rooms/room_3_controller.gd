@@ -35,6 +35,8 @@ const NURSERY_BGM_TARGET_VOLUME_DB: float = -8.0
 @onready var _bullet_spawner: Node = get_node_or_null("CanvasLayer/BulletSpawner") as Node
 @onready var _doctor: AnimatedSprite2D = get_node_or_null("CanvasLayer/Doctor") as AnimatedSprite2D
 @onready var _doctor_timer_label: Label = _resolve_doctor_timer_label()
+@onready var _baby_interaction: Area2D = get_node_or_null("CanvasLayer/BabyInteraction") as Area2D
+@onready var _ravi_sprite: AnimatedSprite2D = get_node_or_null("CanvasLayer/BabyInteraction/Ravi") as AnimatedSprite2D
 
 var _default_protagonist_modulate: Color = Color.WHITE
 var _hit_flash_tween: Tween
@@ -42,7 +44,6 @@ var _hit_invulnerable: bool = false
 var _survival_phase_finished: bool = false
 var _nursery_transition_started: bool = false
 var _nursery_background: AnimatedSprite2D
-var _ravi_sprite: AnimatedSprite2D
 
 
 func _ready() -> void:
@@ -284,27 +285,38 @@ func _prepare_nursery_nodes() -> void:
 		_nursery_background.frame = 0
 		_nursery_background.frame_progress = 0.0
 
-	if _ravi_sprite == null:
-		_ravi_sprite = AnimatedSprite2D.new()
-		_ravi_sprite.name = "Ravi"
-		_ravi_sprite.position = Vector2(270.0, 520.0)
-		_ravi_sprite.scale = Vector2(1.0, 1.0)
-		_ravi_sprite.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		_ravi_sprite.visible = false
-		_ravi_sprite.z_index = 3
-		_canvas_layer.add_child(_ravi_sprite)
+	if _baby_interaction == null:
+		push_warning("Room3Controller nao encontrou CanvasLayer/BabyInteraction.")
+		return
 
-	var ravi_frames: SpriteFrames = _build_sprite_frames(
-		RAVI_IDLE_TEXTURE_PATH,
-		&"funny_idle",
-		RAVI_IDLE_COLUMNS,
-		RAVI_IDLE_ROWS,
-		RAVI_IDLE_FRAME_SIZE,
-		RAVI_IDLE_FPS,
-		true
-	)
-	if ravi_frames != null:
-		_ravi_sprite.sprite_frames = ravi_frames
+	if _ravi_sprite == null:
+		push_warning("Room3Controller nao encontrou CanvasLayer/BabyInteraction/Ravi.")
+		return
+
+	_baby_interaction.global_position = Vector2(270.0, 520.0)
+	if _baby_interaction.has_method("setup"):
+		_baby_interaction.call("setup", _protagonist, _baby_interaction.global_position)
+	if _baby_interaction.has_method("set_interaction_enabled"):
+		_baby_interaction.call("set_interaction_enabled", false)
+
+	_ravi_sprite.visible = false
+	_ravi_sprite.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_ravi_sprite.scale = Vector2.ONE
+
+	if _ravi_sprite.sprite_frames == null or not _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
+		var ravi_frames: SpriteFrames = _build_sprite_frames(
+			RAVI_IDLE_TEXTURE_PATH,
+			&"funny_idle",
+			RAVI_IDLE_COLUMNS,
+			RAVI_IDLE_ROWS,
+			RAVI_IDLE_FRAME_SIZE,
+			RAVI_IDLE_FPS,
+			true
+		)
+		if ravi_frames != null:
+			_ravi_sprite.sprite_frames = ravi_frames
+
+	if _ravi_sprite.sprite_frames != null and _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
 		_ravi_sprite.animation = &"funny_idle"
 		_ravi_sprite.frame = 0
 		_ravi_sprite.frame_progress = 0.0
@@ -350,7 +362,11 @@ func _reveal_ravi_center() -> void:
 	_ravi_sprite.visible = true
 	_ravi_sprite.modulate.a = 0.0
 	_ravi_sprite.scale = Vector2(0.9, 0.9)
-	_ravi_sprite.play(&"funny_idle")
+	if _ravi_sprite.sprite_frames != null and _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
+		_ravi_sprite.play(&"funny_idle")
+
+	if _baby_interaction != null and _baby_interaction.has_method("set_interaction_enabled"):
+		_baby_interaction.call("set_interaction_enabled", true)
 
 	var reveal_tween: Tween = create_tween()
 	reveal_tween.parallel().tween_property(_ravi_sprite, "modulate:a", 1.0, RAVI_REVEAL_DURATION)
