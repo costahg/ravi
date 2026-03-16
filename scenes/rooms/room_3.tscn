@@ -1057,7 +1057,7 @@ script = ExtResource("6_baby_interaction")
 [node name="Ravi" type="AnimatedSprite2D" parent="CanvasLayer/BabyInteraction"]
 modulate = Color(1, 1, 1, 0)
 z_index = 3
-scale = Vector2(0.4, 0.4)
+scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_wt4am")
 animation = &"idle"
 

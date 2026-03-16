@@ -10,11 +10,6 @@ const NURSERY_BACKGROUND_COLUMNS: int = 6
 const NURSERY_BACKGROUND_ROWS: int = 4
 const NURSERY_BACKGROUND_FRAME_SIZE: Vector2 = Vector2(1024.0, 1536.0)
 const NURSERY_BACKGROUND_FPS: float = 12.0
-const RAVI_IDLE_TEXTURE_PATH: String = "res://assets/sprites/RaviFunny-1256x256_7C7L.png"
-const RAVI_IDLE_COLUMNS: int = 7
-const RAVI_IDLE_ROWS: int = 7
-const RAVI_IDLE_FRAME_SIZE: Vector2 = Vector2(256.0, 256.0)
-const RAVI_IDLE_FPS: float = 10.0
 const PROJECTILE_GROUP: StringName = &"projectile"
 const HIT_FLASH_COLOR: Color = Color(1.0, 0.35, 0.35, 1.0)
 const HIT_FLASH_DURATION: float = 0.08
@@ -25,8 +20,14 @@ const HOSPITAL_FADE_DURATION: float = 0.6
 const NURSERY_FADE_DURATION: float = 0.8
 const RAVI_REVEAL_DURATION: float = 0.6
 const NURSERY_BGM_TARGET_VOLUME_DB: float = -8.0
+const PROTAGONIST_SCENE: PackedScene = preload("res://scenes/components/protagonist.tscn")
 
 @export var survival_duration: float = 15.0
+@export_group("Nursery Protagonist Margins")
+@export var nursery_margin_top: float = 320.0
+@export var nursery_margin_bottom: float = 200.0
+@export var nursery_margin_left: float = 70.0
+@export var nursery_margin_right: float = 70.0
 
 @onready var _canvas_layer: CanvasLayer = $CanvasLayer
 @onready var _hospital_background: AnimatedSprite2D = $CanvasLayer/HospitalBackground
@@ -35,8 +36,8 @@ const NURSERY_BGM_TARGET_VOLUME_DB: float = -8.0
 @onready var _bullet_spawner: Node = get_node_or_null("CanvasLayer/BulletSpawner") as Node
 @onready var _doctor: AnimatedSprite2D = get_node_or_null("CanvasLayer/Doctor") as AnimatedSprite2D
 @onready var _doctor_timer_label: Label = _resolve_doctor_timer_label()
-@onready var _baby_interaction: Area2D = get_node_or_null("CanvasLayer/BabyInteraction") as Area2D
-@onready var _ravi_sprite: AnimatedSprite2D = get_node_or_null("CanvasLayer/BabyInteraction/Ravi") as AnimatedSprite2D
+@onready var _baby_interaction: Area2D = _resolve_baby_interaction()
+@onready var _ravi_sprite: Node2D = _resolve_baby_visual()
 
 var _default_protagonist_modulate: Color = Color.WHITE
 var _hit_flash_tween: Tween
@@ -44,6 +45,7 @@ var _hit_invulnerable: bool = false
 var _survival_phase_finished: bool = false
 var _nursery_transition_started: bool = false
 var _nursery_background: AnimatedSprite2D
+var _ravi_base_scale: Vector2 = Vector2.ONE
 
 
 func _ready() -> void:
@@ -124,6 +126,50 @@ func _resolve_doctor_timer_label() -> Label:
 		return canvas_label
 
 	return get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
+
+
+func _resolve_baby_interaction() -> Area2D:
+	var direct_baby_interaction: Area2D = get_node_or_null("CanvasLayer/BabyInteraction") as Area2D
+	if direct_baby_interaction != null:
+		return direct_baby_interaction
+
+	var canvas_layer_node: Node = get_node_or_null("CanvasLayer")
+	if canvas_layer_node == null:
+		return null
+
+	for node_variant in canvas_layer_node.find_children("*", "Area2D", true, false):
+		var area: Area2D = node_variant as Area2D
+		if area == null:
+			continue
+		if area.has_method("setup") and area.has_method("set_interaction_enabled"):
+			return area
+
+	return null
+
+
+func _resolve_baby_visual() -> Node2D:
+	if _baby_interaction == null:
+		return null
+
+	for node_variant in _baby_interaction.find_children("*", "AnimatedSprite2D", true, false):
+		var animated_sprite: AnimatedSprite2D = node_variant as AnimatedSprite2D
+		if animated_sprite != null:
+			return animated_sprite
+
+	for node_variant in _baby_interaction.find_children("*", "Sprite2D", true, false):
+		var sprite: Sprite2D = node_variant as Sprite2D
+		if sprite != null:
+			return sprite
+
+	for child in _baby_interaction.get_children():
+		var visual_node: Node2D = child as Node2D
+		if visual_node == null:
+			continue
+		if visual_node is CollisionShape2D:
+			continue
+		return visual_node
+
+	return null
 
 
 func _stop_bullet_spawner() -> void:
@@ -245,6 +291,8 @@ func _transition_to_nursery() -> void:
 	transition_chain.add_step(Callable(self, "_fade_out_hospital_elements"), HOSPITAL_FADE_DURATION)
 	transition_chain.add_step(Callable(self, "_fade_in_nursery_background"), NURSERY_FADE_DURATION)
 	transition_chain.add_step(Callable(self, "_soften_room_3_music"), 0.15)
+	transition_chain.add_step(Callable(self, "_replace_dodge_protagonist_with_standard"), 0.05)
+	transition_chain.add_step(Callable(self, "_configure_baby_interaction_for_nursery"), 0.05)
 	transition_chain.add_step(Callable(self, "_reveal_ravi_center"), RAVI_REVEAL_DURATION)
 	transition_chain.chain_completed.connect(
 		func() -> void:
@@ -286,40 +334,108 @@ func _prepare_nursery_nodes() -> void:
 		_nursery_background.frame_progress = 0.0
 
 	if _baby_interaction == null:
-		push_warning("Room3Controller nao encontrou CanvasLayer/BabyInteraction.")
+		push_warning("Room3Controller nao encontrou nenhum Area2D de interacao do bebe na cena.")
 		return
 
 	if _ravi_sprite == null:
-		push_warning("Room3Controller nao encontrou CanvasLayer/BabyInteraction/Ravi.")
+		push_warning("Room3Controller nao encontrou nenhum visual do bebe dentro do Area2D configurado na cena.")
 		return
 
-	_baby_interaction.global_position = Vector2(270.0, 520.0)
-	if _baby_interaction.has_method("setup"):
-		_baby_interaction.call("setup", _protagonist, _baby_interaction.global_position)
+	_ravi_base_scale = _resolve_ravi_base_scale()
+
 	if _baby_interaction.has_method("set_interaction_enabled"):
 		_baby_interaction.call("set_interaction_enabled", false)
 
+	if _baby_interaction.has_method("set_roaming_enabled"):
+		_baby_interaction.call("set_roaming_enabled", false)
+
 	_ravi_sprite.visible = false
 	_ravi_sprite.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	_ravi_sprite.scale = Vector2.ONE
+	_ravi_sprite.scale = _ravi_base_scale
 
-	if _ravi_sprite.sprite_frames == null or not _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
-		var ravi_frames: SpriteFrames = _build_sprite_frames(
-			RAVI_IDLE_TEXTURE_PATH,
-			&"funny_idle",
-			RAVI_IDLE_COLUMNS,
-			RAVI_IDLE_ROWS,
-			RAVI_IDLE_FRAME_SIZE,
-			RAVI_IDLE_FPS,
-			true
+
+func _configure_baby_interaction_for_nursery() -> void:
+	if _baby_interaction == null:
+		return
+
+	if _baby_interaction.has_method("setup"):
+		_baby_interaction.call("setup", _protagonist, _baby_interaction.global_position)
+
+	if _baby_interaction.has_method("configure_roaming_area"):
+		_baby_interaction.call(
+			"configure_roaming_area",
+			get_viewport_rect().size,
+			nursery_margin_top,
+			nursery_margin_bottom,
+			nursery_margin_left,
+			nursery_margin_right
 		)
-		if ravi_frames != null:
-			_ravi_sprite.sprite_frames = ravi_frames
 
-	if _ravi_sprite.sprite_frames != null and _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
-		_ravi_sprite.animation = &"funny_idle"
-		_ravi_sprite.frame = 0
-		_ravi_sprite.frame_progress = 0.0
+	if _baby_interaction.has_method("set_interaction_enabled"):
+		_baby_interaction.call("set_interaction_enabled", true)
+
+	if _baby_interaction.has_method("set_roaming_enabled"):
+		_baby_interaction.call("set_roaming_enabled", true)
+
+
+func _replace_dodge_protagonist_with_standard() -> void:
+	if _protagonist == null:
+		push_warning("Room3Controller nao encontrou a protagonista para substituir apos o bullet hell.")
+		return
+
+	if PROTAGONIST_SCENE == null:
+		push_warning("Room3Controller nao conseguiu carregar o PackedScene da protagonista padrao.")
+		return
+
+	var old_protagonist: Node2D = _protagonist
+	var parent_node: Node = old_protagonist.get_parent()
+	if parent_node == null:
+		push_warning("Room3Controller nao encontrou parent da protagonista para substituir apos o bullet hell.")
+		return
+
+	var standard_protagonist: Node2D = PROTAGONIST_SCENE.instantiate() as Node2D
+	if standard_protagonist == null:
+		push_warning("Room3Controller nao conseguiu instanciar a protagonista padrao.")
+		return
+
+	var previous_index: int = old_protagonist.get_index()
+	var previous_name: StringName = old_protagonist.name
+	var previous_global_position: Vector2 = old_protagonist.global_position
+	var previous_scale: Vector2 = old_protagonist.scale
+	var previous_rotation: float = old_protagonist.rotation
+	var previous_modulate: Color = old_protagonist.modulate
+	var previous_visible: bool = old_protagonist.visible
+	var previous_z_index: int = old_protagonist.z_index
+
+	old_protagonist.name = &"ProtagonistBulletHell"
+
+	parent_node.add_child(standard_protagonist)
+	parent_node.move_child(standard_protagonist, previous_index)
+
+	standard_protagonist.name = previous_name
+	standard_protagonist.global_position = previous_global_position
+	standard_protagonist.scale = previous_scale
+	standard_protagonist.rotation = previous_rotation
+	standard_protagonist.modulate = previous_modulate
+	standard_protagonist.visible = previous_visible
+	standard_protagonist.z_index = previous_z_index
+
+	_apply_nursery_protagonist_margins(standard_protagonist)
+
+	old_protagonist.queue_free()
+
+	_protagonist = standard_protagonist
+	_default_protagonist_modulate = _protagonist.modulate
+
+
+func _apply_nursery_protagonist_margins(target: Node2D) -> void:
+	if target == null:
+		return
+
+	target.set("margin_top", nursery_margin_top)
+	target.set("margin_bottom", nursery_margin_bottom)
+	target.set("margin_left", nursery_margin_left)
+	target.set("margin_right", nursery_margin_right)
 
 
 func _fade_out_hospital_elements() -> void:
@@ -356,21 +472,39 @@ func _soften_room_3_music() -> void:
 
 func _reveal_ravi_center() -> void:
 	if _ravi_sprite == null:
-		push_warning("Room3Controller nao conseguiu preparar o sprite do Ravi.")
+		push_warning("Room3Controller nao conseguiu preparar o visual do bebe configurado na cena.")
 		return
 
 	_ravi_sprite.visible = true
 	_ravi_sprite.modulate.a = 0.0
-	_ravi_sprite.scale = Vector2(0.9, 0.9)
-	if _ravi_sprite.sprite_frames != null and _ravi_sprite.sprite_frames.has_animation(&"funny_idle"):
-		_ravi_sprite.play(&"funny_idle")
+	_ravi_sprite.scale = _ravi_base_scale * 0.9
 
-	if _baby_interaction != null and _baby_interaction.has_method("set_interaction_enabled"):
-		_baby_interaction.call("set_interaction_enabled", true)
+	var animated_sprite: AnimatedSprite2D = _ravi_sprite as AnimatedSprite2D
+	if animated_sprite != null and animated_sprite.sprite_frames != null:
+		if animated_sprite.animation != StringName() and animated_sprite.sprite_frames.has_animation(animated_sprite.animation):
+			animated_sprite.play(animated_sprite.animation)
+		else:
+			var animation_names: PackedStringArray = animated_sprite.sprite_frames.get_animation_names()
+			if not animation_names.is_empty():
+				animated_sprite.play(StringName(animation_names[0]))
 
 	var reveal_tween: Tween = create_tween()
 	reveal_tween.parallel().tween_property(_ravi_sprite, "modulate:a", 1.0, RAVI_REVEAL_DURATION)
-	reveal_tween.parallel().tween_property(_ravi_sprite, "scale", Vector2.ONE, RAVI_REVEAL_DURATION)
+	reveal_tween.parallel().tween_property(_ravi_sprite, "scale", _ravi_base_scale, RAVI_REVEAL_DURATION)
+
+	if _baby_interaction != null and _baby_interaction.has_method("set_roaming_enabled"):
+		_baby_interaction.call("set_roaming_enabled", true)
+
+
+func _resolve_ravi_base_scale() -> Vector2:
+	if _ravi_sprite == null:
+		return Vector2.ONE
+
+	var current_scale: Vector2 = _ravi_sprite.scale
+	if is_zero_approx(current_scale.x) or is_zero_approx(current_scale.y):
+		return Vector2.ONE
+
+	return current_scale
 
 
 func _build_sprite_frames(
