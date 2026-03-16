@@ -362,12 +362,13 @@ animation = &"loop"
 frame_progress = 0.20539528
 
 [node name="TimerLabel" type="Label" parent="CanvasLayer/Doctor"]
-offset_left = -96.0
-offset_top = -188.0
-offset_right = 96.0
-offset_bottom = -104.0
+offset_left = -160.0
+offset_top = -220.0
+offset_right = 160.0
+offset_bottom = -120.0
 grow_horizontal = 2
-text = "15.0"
+z_index = 10
+text = "TEMPO: 15.0s"
 horizontal_alignment = 1
 vertical_alignment = 1
 

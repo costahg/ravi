@@ -11,7 +11,7 @@ const HIT_FLASH_DURATION: float = 0.08
 const HIT_RECOVER_DURATION: float = 0.18
 const HIT_INVULNERABILITY_DURATION: float = 0.5
 const PROJECTILE_FADE_DURATION: float = 0.25
-const SURVIVAL_TIMER_TEXT_PREFIX: String = ""
+const SURVIVAL_TIMER_TEXT_PREFIX: String = "TEMPO: "
 
 @export var survival_duration: float = 15.0
 
@@ -111,12 +111,12 @@ func _configure_doctor_timer_label() -> void:
 		push_warning("Room3Controller nao encontrou CanvasLayer/Doctor/TimerLabel.")
 		return
 
-	_doctor_timer_label.add_theme_font_size_override("font_size", 56)
+	_doctor_timer_label.add_theme_font_size_override("font_size", 64)
 	_doctor_timer_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.9, 1.0))
 	_doctor_timer_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
-	_doctor_timer_label.add_theme_constant_override("outline_size", 10)
+	_doctor_timer_label.add_theme_constant_override("outline_size", 14)
 	_doctor_timer_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.8))
-	_doctor_timer_label.add_theme_constant_override("shadow_outline_size", 6)
+	_doctor_timer_label.add_theme_constant_override("shadow_outline_size", 8)
 	_doctor_timer_label.add_theme_constant_override("shadow_offset_x", 0)
 	_doctor_timer_label.add_theme_constant_override("shadow_offset_y", 4)
 	_update_doctor_timer_label()
@@ -127,11 +127,11 @@ func _update_doctor_timer_label() -> void:
 		return
 
 	if _survival_phase_finished:
-		_doctor_timer_label.text = "0.0"
+		_doctor_timer_label.text = "%s0.0s" % SURVIVAL_TIMER_TEXT_PREFIX
 		return
 
 	var seconds_left: float = maxf(_survival_timer.time_left, 0.0)
-	_doctor_timer_label.text = "%s%.1f" % [SURVIVAL_TIMER_TEXT_PREFIX, seconds_left]
+	_doctor_timer_label.text = "%s%.1fs" % [SURVIVAL_TIMER_TEXT_PREFIX, seconds_left]
 
 
 func _on_protagonist_hit() -> void:
