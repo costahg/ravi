@@ -145,10 +145,10 @@ func _process_bgm_requests() -> void:
 			push_warning("AudioManager.play_bgm ignorado: track nula para key %s" % next_track_key)
 			continue
 
+
 		var next_track_seek_position: float = 0.0
 		if next_track.get_length() > 0.0:
 			next_track_seek_position = fposmod(_bgm_transport_position, next_track.get_length())
-
 		if _current_bgm_track_key == next_track_key and bgm_player.playing:
 			bgm_player.volume_db = BGM_DEFAULT_VOLUME_DB
 			continue

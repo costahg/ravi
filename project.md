@@ -396,7 +396,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Transição emocional para interação suave com o bebê. A interação só começa quando a protagonista alcança o Ravi
 - **Diretorio:** /scripts/rooms/room_3/
 - **Micro-Tasks:**
-  - [ ] MT-5.2.1: Implementar `_transition_to_nursery()` usando EventChain: (1) fade out elementos hospitalares, (2) trocar fundo para quarto do bebê, (3) mudar tom musical (AudioManager — mesma track mas volume ajustado ou track alternativa mais calma), (4) revelar sprite do Ravi no centro
+  - [X] MT-5.2.1: Implementar `_transition_to_nursery()` usando EventChain: (1) fade out elementos hospitalares, (2) trocar fundo para quarto do bebê, (3) mudar tom musical (AudioManager — mesma track mas volume ajustado ou track alternativa mais calma), (4) revelar sprite do Ravi no centro
   - [ ] MT-5.2.2: Criar `baby_interaction.gd`: clique/toque no Ravi primeiro move a protagonista até o bebê. Só quando ela chega a interação fica ativa. Cada `pressed` válido gera `Sprite2D` de coração na posição do toque com Tween (sobe + fade out em 1s, depois `queue_free`), toca SFX fofo (varia entre 2-3 sons aleatórios) e incrementa `_touch_count: int`. Após 5+ toques, mostrar botão/indicador sutil de "→" (próxima)
   - [ ] MT-5.2.3: Botão de próximo chama `GameManager.complete_room(3)`. Garantir que não aparece antes de 5 toques para que jogador interaja minimamente
 - **Criterios de Aceitacao:**

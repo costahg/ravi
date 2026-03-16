@@ -361,17 +361,6 @@ sprite_frames = SubResource("SpriteFrames_xwnce")
 animation = &"loop"
 frame_progress = 0.20539528
 
-[node name="TimerLabel" type="Label" parent="CanvasLayer/Doctor"]
-offset_left = -160.0
-offset_top = -220.0
-offset_right = 160.0
-offset_bottom = -120.0
-grow_horizontal = 2
-z_index = 10
-text = "TEMPO: 15.0s"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="Protagonist" parent="CanvasLayer" instance=ExtResource("2_protagonist")]
 z_index = 2
 script = ExtResource("3_player_dodge")
@@ -387,3 +376,13 @@ one_shot = true
 
 [node name="BulletSpawner" type="Node" parent="CanvasLayer"]
 script = ExtResource("4_bullet_spawner")
+
+[node name="TimerLabel" type="Label" parent="CanvasLayer"]
+z_index = 10
+offset_left = 258.0
+offset_top = 177.0
+offset_right = 578.0
+offset_bottom = 277.0
+text = "TEMPO: 15.0s"
+horizontal_alignment = 1
+vertical_alignment = 1
