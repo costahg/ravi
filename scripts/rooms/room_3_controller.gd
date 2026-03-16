@@ -18,6 +18,7 @@ const PROJECTILE_FADE_DURATION: float = 0.25
 @onready var _protagonist: Node2D = $CanvasLayer/Protagonist
 @onready var _survival_timer: Timer = $CanvasLayer/SurvivalTimer
 @onready var _bullet_spawner: Node = get_node_or_null("CanvasLayer/BulletSpawner") as Node
+@onready var _doctor_timer_label: Label = get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
 
 var _default_protagonist_modulate: Color = Color.WHITE
 var _hit_flash_tween: Tween
@@ -30,7 +31,12 @@ func _ready() -> void:
 	_configure_hospital_background()
 	_configure_survival_timer()
 	_connect_survival_phase()
+	_configure_doctor_timer_label()
 	_start_bullet_spawner()
+
+
+func _process(_delta: float) -> void:
+	_update_doctor_timer_label()
 
 
 func _configure_hospital_background() -> void:
@@ -99,6 +105,34 @@ func _stop_bullet_spawner() -> void:
 		_bullet_spawner.call("stop_spawning")
 
 
+func _configure_doctor_timer_label() -> void:
+	if _doctor_timer_label == null:
+		push_warning("Room3Controller nao encontrou CanvasLayer/Doctor/TimerLabel.")
+		return
+
+	_doctor_timer_label.add_theme_font_size_override("font_size", 64)
+	_doctor_timer_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.9, 1.0))
+	_doctor_timer_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
+	_doctor_timer_label.add_theme_constant_override("outline_size", 14)
+	_doctor_timer_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.8))
+	_doctor_timer_label.add_theme_constant_override("shadow_outline_size", 8)
+	_doctor_timer_label.add_theme_constant_override("shadow_offset_x", 0)
+	_doctor_timer_label.add_theme_constant_override("shadow_offset_y", 4)
+	_update_doctor_timer_label()
+
+
+func _update_doctor_timer_label() -> void:
+	if _doctor_timer_label == null or _survival_timer == null:
+		return
+
+	if _survival_phase_finished:
+		_doctor_timer_label.text = "0.0s"
+		return
+
+	var seconds_left: float = maxf(_survival_timer.time_left, 0.0)
+	_doctor_timer_label.text = "%.1fs" % seconds_left
+
+
 func _on_protagonist_hit() -> void:
 	if _hit_invulnerable or _survival_phase_finished:
 		return
@@ -127,12 +161,37 @@ func _on_survival_timer_timeout() -> void:
 		return
 
 	_survival_phase_finished = true
+	_hit_invulnerable = true
 	_stop_bullet_spawner()
+	_disable_protagonist_hitbox()
+	_reset_hit_flash_visual()
 
 	if not get_tree().get_nodes_in_group(PROJECTILE_GROUP).is_empty():
 		await _fade_out_projectiles()
 
 	_transition_to_nursery()
+
+
+func _disable_protagonist_hitbox() -> void:
+	if _protagonist == null:
+		return
+
+	var protagonist_hitbox: Area2D = _protagonist.get_node_or_null("Hitbox") as Area2D
+	if protagonist_hitbox == null:
+		return
+
+	protagonist_hitbox.monitoring = false
+	protagonist_hitbox.monitorable = false
+
+
+func _reset_hit_flash_visual() -> void:
+	if _protagonist == null:
+		return
+
+	if _hit_flash_tween != null:
+		_hit_flash_tween.kill()
+
+	_protagonist.modulate = _default_protagonist_modulate
 
 
 func _fade_out_projectiles() -> void:

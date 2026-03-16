@@ -64,7 +64,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Diretorio:** /
 - **Micro-Tasks:**
   - [x] MT-0.1.1: Criar projeto Godot 4 com pastas: `scenes/rooms/`, `scenes/ui/`, `scripts/core/`, `scripts/components/`, `scripts/rooms/`, `assets/sprites/`, `assets/audio/`, `assets/fonts/`
-  - [X] MT-0.1.2: Configurar `project.godot`: viewport 540x960, stretch mode `canvas_items`, stretch aspect `keep_width`, orientation portrait
+  - [X] MT-0.1.2: Configurar `project.godot`: viewport 540x960, stretch mode `canvas_items`, stretch aspect `keep`, orientation portrait
   - [X] MT-0.1.3: Criar `.gitignore` para Godot 4 e commitar estrutura vazia
 - **Criterios de Aceitacao:**
   1. Projeto abre no editor sem erros
