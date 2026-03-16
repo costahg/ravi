@@ -4,6 +4,7 @@ const PROJECTILE_SCENE_PATH: String = "res://scenes/components/projectile.tscn"
 const PROJECTILE_SPAWN_OFFSET: float = 48.0
 
 @export var spawn_rate_range: Vector2 = Vector2(0.4, 0.8)
+@export var projectile_scale_range: Vector2 = Vector2(0.85, 1.25)
 
 var _projectile_scene: PackedScene
 var _spawn_timer: Timer
@@ -70,6 +71,8 @@ func _spawn_projectile() -> void:
 	spawn_parent.add_child(projectile)
 	projectile.global_position = spawn_data.get("position", Vector2.ZERO)
 	projectile.set("direction", spawn_data.get("direction", Vector2.DOWN))
+	projectile.rotation = float(spawn_data.get("rotation", 0.0))
+	projectile.scale = Vector2.ONE * float(spawn_data.get("scale", 1.0))
 
 
 func _schedule_next_spawn() -> void:
@@ -108,9 +111,16 @@ func _build_spawn_data() -> Dictionary:
 		_:
 			spawn_position = Vector2(_rng.randf_range(min_bounds.x, max_bounds.x), max_bounds.y + PROJECTILE_SPAWN_OFFSET)
 
+	var direction_to_center: Vector2 = (center_point - spawn_position).normalized()
+	var min_scale: float = maxf(minf(projectile_scale_range.x, projectile_scale_range.y), 0.1)
+	var max_scale: float = maxf(maxf(projectile_scale_range.x, projectile_scale_range.y), min_scale)
+	var projectile_scale: float = _rng.randf_range(min_scale, max_scale)
+
 	return {
 		"position": spawn_position,
-		"direction": (center_point - spawn_position).normalized(),
+		"direction": direction_to_center,
+		"rotation": direction_to_center.angle(),
+		"scale": projectile_scale,
 	}
 
 

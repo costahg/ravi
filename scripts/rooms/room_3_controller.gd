@@ -11,8 +11,6 @@ const HIT_FLASH_DURATION: float = 0.08
 const HIT_RECOVER_DURATION: float = 0.18
 const HIT_INVULNERABILITY_DURATION: float = 0.5
 const PROJECTILE_FADE_DURATION: float = 0.25
-const SURVIVAL_TIMER_TEXT_PREFIX: String = "TEMPO: "
-
 @export var survival_duration: float = 15.0
 
 @onready var _hospital_background: AnimatedSprite2D = $CanvasLayer/HospitalBackground
@@ -127,11 +125,11 @@ func _update_doctor_timer_label() -> void:
 		return
 
 	if _survival_phase_finished:
-		_doctor_timer_label.text = "%s0.0s" % SURVIVAL_TIMER_TEXT_PREFIX
+		_doctor_timer_label.text = "0.0"
 		return
 
 	var seconds_left: float = maxf(_survival_timer.time_left, 0.0)
-	_doctor_timer_label.text = "%s%.1fs" % [SURVIVAL_TIMER_TEXT_PREFIX, seconds_left]
+	_doctor_timer_label.text = "%.1f" % seconds_left
 
 
 func _on_protagonist_hit() -> void:

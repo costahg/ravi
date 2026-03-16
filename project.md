@@ -335,7 +335,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Diretorio:** /scenes/rooms/ e /scripts/rooms/
 - **Micro-Tasks:**
   - [X] MT-4.3.1: Após a protagonista alcançar a zona de roupa, instanciar/ativar 3 roupas a partir de `res://assets/sprites/Room2Items.png` como `Draggable` e 1 cesto como `DropZone`, sem criar script exclusivo de minigame
-  - [ ] MT-4.3.2: Conectar os drops bem-sucedidos no `room_2_controller.gd`; quando 3/3 roupas entrarem no cesto, atualizar o estado visual de "roupa suja" para "roupa" em `Room2Objects.png`, marcar `_tasks_done["clothes"] = true` e impedir repetição
+  - [X] MT-4.3.2: Conectar os drops bem-sucedidos no `room_2_controller.gd`; quando 3/3 roupas entrarem no cesto, atualizar o estado visual de "roupa suja" para "roupa" em `Room2Objects.png`, marcar `_tasks_done["clothes"] = true` e impedir repetição
 - **Criterios de Aceitacao:**
   1. A roupa só pode ser organizada depois da aproximação da protagonista
   2. As roupas usam `Draggable`/`DropZone` existentes
@@ -383,7 +383,7 @@ Cada fase tem checkpoint que impede avançar sem validação.
   - [X] MT-5.1.2: Criar `player_dodge.gd` como script especializado da protagonista no bullet hell: segue touch/mouse, clampa posição dentro das margens da fase e emite sinal `hit` ao detectar overlap com grupo "projectile"
   - [X] MT-5.1.3: Criar `projectile.tscn`: `Area2D` no grupo "projectile" com sprite (seringa/placeholder), script `projectile.gd` com export `speed: float` e `direction: Vector2`. Move em `_process`. Se sair da tela (`VisibleOnScreenNotifier2D`), `queue_free()`
   - [x] MT-5.1.4: Criar `bullet_spawner.gd`: Timer de spawn (0.4s-0.8s). Instancia `projectile.tscn` em posições aleatórias nas bordas com direção para dentro. Export `spawn_rate_range: Vector2` para variação
-  - [ ] MT-5.1.5: No controller `room_3_controller.gd`: ao script da protagonista emitir `hit`, flash vermelho (Tween modulate) + breve invencibilidade (0.5s). NÃO é game over. Quando timer de sobrevivência acaba, spawner para, projéteis restantes fazem fade out e chama `_transition_to_nursery()`
+  - [X] MT-5.1.5: No controller `room_3_controller.gd`: ao script da protagonista emitir `hit`, flash vermelho (Tween modulate) + breve invencibilidade (0.5s). NÃO é game over. Quando timer de sobrevivência acaba, spawner para, projéteis restantes fazem fade out e chama `_transition_to_nursery()`
 - **Criterios de Aceitacao:**
   1. Player segue dedo responsivamente
   2. Projéteis vêm de bordas variadas
