@@ -427,8 +427,8 @@ Cada fase tem checkpoint que impede avançar sem validação.
 - **Descricao:** Sequência emotiva que encerra o jogo. EventChain mais longa
 - **Diretorio:** /scripts/rooms/room_4/ e /scenes/ui/
 - **Micro-Tasks:**
-  - [ ] MT-5.4.1: Implementar `_trigger_finale()` no room_4_controller usando EventChain: (1) garoto para de chorar (sprite muda), (2) fade out cenário escuro, (3) `AudioManager.play_bgm("finale")` (crossfade para Goo Goo Dolls), (4) fade in cenário do passeio, (5) spawnar os dois personagens, (6) animação de "tirar foto" (Tween sutil), (7) flash branco (ColorRect alpha 0→1→0 rápido), (8) freeze 1.5s, (9) transição para tela final
-  - [ ] MT-5.4.2: Tocar GooGoooDools, Imagem/foto final (fade in lento, 2s). Música continua. Texto cômico no final: Vale pizza / fundo preto (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo - após 5s faz fade to black)
+  - [X] MT-5.4.1: Implementar `_trigger_finale()` no room_4_controller usando EventChain: (1) garoto para de chorar (sprite muda), (2) fade out cenário escuro, (3) `AudioManager.play_bgm("finale")` (crossfade para Goo Goo Dolls), (4) fade in cenário do passeio, (5) spawnar os dois personagens, (6) animação de "tirar foto" (Tween sutil), (7) flash branco (ColorRect alpha 0→1→0 rápido), (8) freeze 1.5s, (9) transição para tela final
+  - [ ] MT-5.4.2: Tocar GooGoooDools, Durante a Cutscene Cry Boy (Henri) e Protagonista deve tocar a animação interact, deve ter um flash branco na tela, depois de 1s: Imagem/foto final (fade in lento, 2s). Música continua. Texto cômico no final: Vale pizza / fundo preto (Label com fonte pixel, fade in após imagem). Nenhum botão intrusivo - após 5s faz fade to black)
 - **Criterios de Aceitacao:**
   1. Crossfade musical sincronizado
   2. "Flash da foto" é satisfatório

@@ -46,9 +46,11 @@ const FINALE_SPAWN_DURATION: float = 0.45
 const FINALE_PHOTO_POSE_DURATION: float = 0.35
 const FINALE_FLASH_DURATION: float = 0.14
 const FINALE_FREEZE_DURATION: float = 1.5
+const HENRI_INTERACTION_HITBOX_SIZE: Vector2 = Vector2(170, 190)
 
 const HEART_ASSEMBLY_MINIGAME_SCRIPT: Script = preload("res://scripts/rooms/room_4/heart_assembly_minigame.gd")
 const EVENT_CHAIN_SCRIPT: Script = preload("res://scripts/components/event_chain.gd")
+const HOTSPOT_SCRIPT: Script = preload("res://scripts/components/hotspot.gd")
 const HENRI_IDLE_TEXTURE: Texture2D = preload("res://assets/sprites/HenriIdle-1256x256_6C6L_S01.png")
 
 @onready var _background_before: AnimatedSprite2D = $BackgroundBefore
@@ -71,12 +73,16 @@ var _assembly_unlocked: bool = false
 var _minigame_opened: bool = false
 var _assembly_completed: bool = false
 var _finale_triggered: bool = false
+var _awaiting_henri_arrival: bool = false
+var _post_minigame_heart_played: bool = false
 
 var _assembly_minigame: CanvasLayer
 var _pending_piece_id: String = ""
 var _pending_piece_node: Node2D
 var _pending_piece_target: Vector2 = Vector2.ZERO
 var _carried_heart: Node2D
+var _henri_hotspot: Area2D
+var _protagonist_initial_position: Vector2 = Vector2.ZERO
 
 var _finale_chain: EventChain
 var _finale_overlay_layer: CanvasLayer
@@ -88,8 +94,10 @@ var _finale_heart_fragments: Array[Polygon2D] = []
 
 
 func _ready() -> void:
-	if _protagonist != null and not _protagonist.destination_reached.is_connected(_on_protagonist_destination_reached):
-		_protagonist.destination_reached.connect(_on_protagonist_destination_reached)
+	if _protagonist != null:
+		_protagonist_initial_position = _protagonist.global_position
+		if not _protagonist.destination_reached.is_connected(_on_protagonist_destination_reached):
+			_protagonist.destination_reached.connect(_on_protagonist_destination_reached)
 
 	if _assembly_hotspot != null:
 		if not _assembly_hotspot.pressed.is_connected(_on_assembly_hotspot_pressed):
@@ -97,6 +105,7 @@ func _ready() -> void:
 		_assembly_hotspot.set("active", false)
 
 	_connect_piece_hotspots()
+	_build_henri_interaction_hotspot()
 	_build_carried_heart()
 	_build_minigame()
 	_build_finale_chain()
@@ -152,6 +161,31 @@ func _connect_piece_hotspots() -> void:
 			hotspot.pressed.connect(callback)
 
 
+func _build_henri_interaction_hotspot() -> void:
+	if _crying_boy == null or _henri_hotspot != null:
+		return
+
+	_henri_hotspot = Area2D.new()
+	_henri_hotspot.name = "HenriHotspot"
+	_henri_hotspot.set_script(HOTSPOT_SCRIPT)
+	_henri_hotspot.set("hotspot_id", "henri_finale")
+	_henri_hotspot.set("one_shot", false)
+	_henri_hotspot.set("active", false)
+
+	var collision_shape: CollisionShape2D = CollisionShape2D.new()
+	collision_shape.name = "CollisionShape2D"
+
+	var shape: RectangleShape2D = RectangleShape2D.new()
+	shape.size = HENRI_INTERACTION_HITBOX_SIZE
+	collision_shape.shape = shape
+
+	_henri_hotspot.add_child(collision_shape)
+	_crying_boy.add_child(_henri_hotspot)
+
+	if not _henri_hotspot.pressed.is_connected(_on_henri_hotspot_pressed):
+		_henri_hotspot.pressed.connect(_on_henri_hotspot_pressed)
+
+
 func _on_piece_hotspot_pressed(hotspot_id: String, piece_node: Node2D) -> void:
 	if hotspot_id == "" or piece_node == null:
 		return
@@ -167,6 +201,20 @@ func _on_piece_hotspot_pressed(hotspot_id: String, piece_node: Node2D) -> void:
 	_protagonist.set_manual_input_enabled(false)
 	_protagonist.consume_next_press()
 	_protagonist.move_to_global_position(_pending_piece_target)
+
+
+func _on_henri_hotspot_pressed(_hotspot_id: String) -> void:
+	if not _assembly_completed or _finale_triggered or _awaiting_henri_arrival:
+		return
+	if not _post_minigame_heart_played:
+		return
+	if _protagonist == null or _crying_boy == null:
+		return
+
+	_awaiting_henri_arrival = true
+	_protagonist.set_manual_input_enabled(false)
+	_protagonist.consume_next_press()
+	_protagonist.move_to_global_position(_crying_boy.global_position)
 
 
 func _on_assembly_hotspot_pressed(_hotspot_id: String) -> void:
@@ -198,6 +246,14 @@ func _on_protagonist_destination_reached(destination: Vector2) -> void:
 			_awaiting_assembly_arrival = false
 			_hide_carried_heart()
 			_open_minigame()
+		return
+
+	if _awaiting_henri_arrival and _crying_boy != null:
+		if destination.distance_to(_crying_boy.global_position) <= ARRIVAL_TOLERANCE:
+			_awaiting_henri_arrival = false
+			if _henri_hotspot != null:
+				_henri_hotspot.set("active", false)
+			_trigger_finale()
 
 
 func _unlock_assembly_area() -> void:
@@ -294,7 +350,75 @@ func _on_minigame_completed() -> void:
 
 	_assembly_completed = true
 	_update_boy_feedback()
-	_trigger_finale()
+	_prepare_post_minigame_state()
+	_play_post_minigame_heart_animation()
+
+
+func _prepare_post_minigame_state() -> void:
+	_minigame_opened = false
+	_awaiting_henri_arrival = false
+
+	if _assembly_minigame != null:
+		_assembly_minigame.call("close")
+
+	_hide_carried_heart()
+
+	if _background_before != null:
+		_background_before.visible = false
+
+	if _heart_pieces_root != null:
+		_heart_pieces_root.visible = false
+
+	if _assembly_area != null:
+		_assembly_area.visible = false
+
+	if _background_after != null:
+		_background_after.visible = true
+		_background_after.modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+	if _crying_boy != null:
+		_crying_boy.visible = true
+		_crying_boy.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_crying_boy.scale = Vector2.ONE
+
+	_step_boy_stops_crying()
+
+	if _protagonist != null:
+		_protagonist.visible = true
+		_protagonist.global_position = _protagonist_initial_position
+		if _protagonist.has_method("stop"):
+			_protagonist.call("stop")
+		_protagonist.set_manual_input_enabled(false)
+
+	if _henri_hotspot != null:
+		_henri_hotspot.set("active", false)
+
+
+func _play_post_minigame_heart_animation() -> void:
+	if _post_minigame_heart_played:
+		return
+
+	_build_finale_overlay()
+	_post_minigame_heart_played = true
+
+	if _protagonist != null:
+		_protagonist.set_manual_input_enabled(false)
+
+	_step_show_completed_heart()
+
+	var timer: SceneTreeTimer = get_tree().create_timer(FINALE_HEART_REFORM_DURATION)
+	timer.timeout.connect(_on_post_minigame_heart_animation_finished)
+
+
+func _on_post_minigame_heart_animation_finished() -> void:
+	if _finale_triggered:
+		return
+
+	if _protagonist != null:
+		_protagonist.set_manual_input_enabled(true)
+
+	if _henri_hotspot != null:
+		_henri_hotspot.set("active", true)
 
 
 func _trigger_finale() -> void:
@@ -314,13 +438,13 @@ func _trigger_finale() -> void:
 
 	if _protagonist != null:
 		_protagonist.set_manual_input_enabled(false)
+		_protagonist.visible = true
+
+	if _henri_hotspot != null:
+		_henri_hotspot.set("active", false)
 
 	_finale_chain.clear()
-	_finale_chain.add_step(Callable(self, "_step_show_completed_heart"), FINALE_HEART_REFORM_DURATION)
-	_finale_chain.add_step(Callable(self, "_step_boy_stops_crying"), 0.35)
-	_finale_chain.add_step(Callable(self, "_step_fade_out_corrupted_scene"), FINALE_FADE_OUT_DURATION)
 	_finale_chain.add_step(Callable(self, "_step_switch_bgm_to_finale"), 0.2)
-	_finale_chain.add_step(Callable(self, "_step_fade_in_peaceful_scene"), FINALE_FADE_IN_DURATION)
 	_finale_chain.add_step(Callable(self, "_step_spawn_finale_characters"), FINALE_SPAWN_DURATION)
 	_finale_chain.add_step(Callable(self, "_step_photo_pose"), FINALE_PHOTO_POSE_DURATION)
 	_finale_chain.add_step(Callable(self, "_step_flash_white"), (FINALE_FLASH_DURATION * 2.0) + 0.05)
@@ -363,10 +487,11 @@ func _build_finale_overlay() -> void:
 	_finale_heart_holder.add_child(heart_outline)
 
 	_finale_heart_fragments.clear()
+	var piece_polygons: Array[PackedVector2Array] = _build_piece_polygons()
 	for index: int in range(TOTAL_HEART_PIECES):
 		var fragment: Polygon2D = Polygon2D.new()
 		fragment.name = "HeartFragment%02d" % [index + 1]
-		fragment.polygon = _build_piece_polygons()[index]
+		fragment.polygon = piece_polygons[index]
 		fragment.position = TARGET_OFFSETS[index]
 		fragment.color = PIECE_COLORS[index]
 		fragment.modulate = Color(1.0, 1.0, 1.0, 0.0)
@@ -537,6 +662,7 @@ func _step_fade_in_peaceful_scene() -> void:
 
 func _step_spawn_finale_characters() -> void:
 	if _crying_boy != null:
+		_crying_boy.visible = true
 		_crying_boy.position = FINALE_HENRI_POSITION + Vector2(0.0, FINALE_SPAWN_OFFSET_Y)
 		_crying_boy.modulate = Color(1.0, 1.0, 1.0, 0.0)
 		_crying_boy.scale = Vector2.ONE
