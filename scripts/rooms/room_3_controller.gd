@@ -5,24 +5,44 @@ const HOSPITAL_BACKGROUND_COLUMNS: int = 6
 const HOSPITAL_BACKGROUND_ROWS: int = 4
 const HOSPITAL_BACKGROUND_FRAME_SIZE: Vector2 = Vector2(1024.0, 1536.0)
 const HOSPITAL_BACKGROUND_FPS: float = 12.0
+const NURSERY_BACKGROUND_TEXTURE_PATH: String = "res://assets/sprites/RaviRoom-11024x1536_6C4L.png"
+const NURSERY_BACKGROUND_COLUMNS: int = 6
+const NURSERY_BACKGROUND_ROWS: int = 4
+const NURSERY_BACKGROUND_FRAME_SIZE: Vector2 = Vector2(1024.0, 1536.0)
+const NURSERY_BACKGROUND_FPS: float = 12.0
+const RAVI_IDLE_TEXTURE_PATH: String = "res://assets/sprites/RaviFunny-1256x256_7C7L.png"
+const RAVI_IDLE_COLUMNS: int = 7
+const RAVI_IDLE_ROWS: int = 7
+const RAVI_IDLE_FRAME_SIZE: Vector2 = Vector2(256.0, 256.0)
+const RAVI_IDLE_FPS: float = 10.0
 const PROJECTILE_GROUP: StringName = &"projectile"
 const HIT_FLASH_COLOR: Color = Color(1.0, 0.35, 0.35, 1.0)
 const HIT_FLASH_DURATION: float = 0.08
 const HIT_RECOVER_DURATION: float = 0.18
 const HIT_INVULNERABILITY_DURATION: float = 0.5
 const PROJECTILE_FADE_DURATION: float = 0.25
+const HOSPITAL_FADE_DURATION: float = 0.6
+const NURSERY_FADE_DURATION: float = 0.8
+const RAVI_REVEAL_DURATION: float = 0.6
+const NURSERY_BGM_TARGET_VOLUME_DB: float = -8.0
+
 @export var survival_duration: float = 15.0
 
+@onready var _canvas_layer: CanvasLayer = $CanvasLayer
 @onready var _hospital_background: AnimatedSprite2D = $CanvasLayer/HospitalBackground
 @onready var _protagonist: Node2D = $CanvasLayer/Protagonist
 @onready var _survival_timer: Timer = $CanvasLayer/SurvivalTimer
 @onready var _bullet_spawner: Node = get_node_or_null("CanvasLayer/BulletSpawner") as Node
+@onready var _doctor: AnimatedSprite2D = get_node_or_null("CanvasLayer/Doctor") as AnimatedSprite2D
 @onready var _doctor_timer_label: Label = get_node_or_null("CanvasLayer/Doctor/TimerLabel") as Label
 
 var _default_protagonist_modulate: Color = Color.WHITE
 var _hit_flash_tween: Tween
 var _hit_invulnerable: bool = false
 var _survival_phase_finished: bool = false
+var _nursery_transition_started: bool = false
+var _nursery_background: AnimatedSprite2D
+var _ravi_sprite: AnimatedSprite2D
 
 
 func _ready() -> void:
@@ -31,6 +51,7 @@ func _ready() -> void:
 	_configure_survival_timer()
 	_connect_survival_phase()
 	_configure_doctor_timer_label()
+	_prepare_nursery_nodes()
 	_start_bullet_spawner()
 
 
@@ -199,7 +220,130 @@ func _disable_projectile_collisions(projectile: Area2D) -> void:
 
 
 func _transition_to_nursery() -> void:
-	pass
+	if _nursery_transition_started:
+		return
+
+	_nursery_transition_started = true
+	_prepare_nursery_nodes()
+
+	var transition_chain: EventChain = EventChain.new()
+	transition_chain.name = "NurseryTransitionChain"
+	add_child(transition_chain)
+	transition_chain.add_step(Callable(self, "_fade_out_hospital_elements"), HOSPITAL_FADE_DURATION)
+	transition_chain.add_step(Callable(self, "_fade_in_nursery_background"), NURSERY_FADE_DURATION)
+	transition_chain.add_step(Callable(self, "_soften_room_3_music"), 0.15)
+	transition_chain.add_step(Callable(self, "_reveal_ravi_center"), RAVI_REVEAL_DURATION)
+	transition_chain.chain_completed.connect(
+		func() -> void:
+			transition_chain.queue_free()
+	)
+	transition_chain.play()
+
+
+func _prepare_nursery_nodes() -> void:
+	if _canvas_layer == null:
+		push_warning("Room3Controller nao encontrou CanvasLayer para preparar o quarto do Ravi.")
+		return
+
+	if _nursery_background == null:
+		_nursery_background = AnimatedSprite2D.new()
+		_nursery_background.name = "NurseryBackground"
+		_nursery_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_nursery_background.centered = false
+		_nursery_background.scale = Vector2(0.52734375, 0.62500006)
+		_nursery_background.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_nursery_background.visible = false
+		_nursery_background.z_index = -1
+		_canvas_layer.add_child(_nursery_background)
+		_canvas_layer.move_child(_nursery_background, 0)
+
+	var nursery_frames: SpriteFrames = _build_sprite_frames(
+		NURSERY_BACKGROUND_TEXTURE_PATH,
+		&"nursery_loop",
+		NURSERY_BACKGROUND_COLUMNS,
+		NURSERY_BACKGROUND_ROWS,
+		NURSERY_BACKGROUND_FRAME_SIZE,
+		NURSERY_BACKGROUND_FPS,
+		true
+	)
+	if nursery_frames != null:
+		_nursery_background.sprite_frames = nursery_frames
+		_nursery_background.animation = &"nursery_loop"
+		_nursery_background.frame = 0
+		_nursery_background.frame_progress = 0.0
+
+	if _ravi_sprite == null:
+		_ravi_sprite = AnimatedSprite2D.new()
+		_ravi_sprite.name = "Ravi"
+		_ravi_sprite.position = Vector2(270.0, 520.0)
+		_ravi_sprite.scale = Vector2(1.0, 1.0)
+		_ravi_sprite.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_ravi_sprite.visible = false
+		_ravi_sprite.z_index = 3
+		_canvas_layer.add_child(_ravi_sprite)
+
+	var ravi_frames: SpriteFrames = _build_sprite_frames(
+		RAVI_IDLE_TEXTURE_PATH,
+		&"funny_idle",
+		RAVI_IDLE_COLUMNS,
+		RAVI_IDLE_ROWS,
+		RAVI_IDLE_FRAME_SIZE,
+		RAVI_IDLE_FPS,
+		true
+	)
+	if ravi_frames != null:
+		_ravi_sprite.sprite_frames = ravi_frames
+		_ravi_sprite.animation = &"funny_idle"
+		_ravi_sprite.frame = 0
+		_ravi_sprite.frame_progress = 0.0
+
+
+func _fade_out_hospital_elements() -> void:
+	if _hospital_background != null:
+		var hospital_fade: Tween = create_tween()
+		hospital_fade.tween_property(_hospital_background, "modulate:a", 0.0, HOSPITAL_FADE_DURATION)
+
+	if _doctor != null:
+		var doctor_fade: Tween = create_tween()
+		doctor_fade.tween_property(_doctor, "modulate:a", 0.0, HOSPITAL_FADE_DURATION)
+
+	if _doctor_timer_label != null:
+		var label_fade: Tween = create_tween()
+		label_fade.tween_property(_doctor_timer_label, "modulate:a", 0.0, HOSPITAL_FADE_DURATION)
+
+
+func _fade_in_nursery_background() -> void:
+	if _nursery_background == null:
+		push_warning("Room3Controller nao conseguiu preparar o fundo do quarto do Ravi.")
+		return
+
+	_nursery_background.visible = true
+	_nursery_background.modulate.a = 0.0
+	_nursery_background.play(&"nursery_loop")
+
+	var nursery_fade: Tween = create_tween()
+	nursery_fade.tween_property(_nursery_background, "modulate:a", 1.0, NURSERY_FADE_DURATION)
+
+
+func _soften_room_3_music() -> void:
+	if Engine.has_singleton("AudioManager"):
+		AudioManager.play_bgm("room_3")
+		AudioManager.set_bgm_volume(NURSERY_BGM_TARGET_VOLUME_DB, NURSERY_FADE_DURATION)
+
+
+func _reveal_ravi_center() -> void:
+	if _ravi_sprite == null:
+		push_warning("Room3Controller nao conseguiu preparar o sprite do Ravi.")
+		return
+
+	_ravi_sprite.visible = true
+	_ravi_sprite.modulate.a = 0.0
+	_ravi_sprite.scale = Vector2(0.9, 0.9)
+	_ravi_sprite.play(&"funny_idle")
+
+	var reveal_tween: Tween = create_tween()
+	reveal_tween.parallel().tween_property(_ravi_sprite, "modulate:a", 1.0, RAVI_REVEAL_DURATION)
+	reveal_tween.parallel().tween_property(_ravi_sprite, "scale", Vector2.ONE, RAVI_REVEAL_DURATION)
 
 
 func _build_sprite_frames(

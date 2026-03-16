@@ -1,8 +1,13 @@
 extends Node
 
 const TRACKS: Dictionary = {
-	"main": preload("res://assets/audio/end_of_beginning.ogg"),
-	"finale": preload("res://assets/audio/goo_goo_dolls.ogg"),
+	"main": preload("res://assets/audio/EndOfBeginninV1.ogg"),
+	"hub_room_1": preload("res://assets/audio/EndOfBeginninV1.ogg"),
+	"room_1": preload("res://assets/audio/EndOfBeginninV1.ogg"),
+	"room_2": preload("res://assets/audio/EndOfBeginninV2.ogg"),
+	"room_3": preload("res://assets/audio/EndOfBeginninV3.ogg"),
+	"finale": preload("res://assets/audio/GooGooDools.ogg"),
+	"room_4": preload("res://assets/audio/GooGooDools.ogg"),
 }
 const BGM_FADE_DURATION: float = 0.5
 const BGM_MUTED_VOLUME_DB: float = -80.0
@@ -76,6 +81,27 @@ func stop_bgm(fade_duration: float = 0.5) -> void:
 	_stop_bgm_requested = true
 	_stop_bgm_fade_duration = max(fade_duration, 0.0)
 	_process_bgm_requests()
+
+
+func set_bgm_volume(target_volume_db: float, fade_duration: float = 0.5) -> void:
+	_ensure_players()
+
+	if not bgm_player.playing:
+		return
+
+	var clamped_duration: float = max(fade_duration, 0.0)
+	if clamped_duration <= 0.0:
+		bgm_player.volume_db = target_volume_db
+		return
+
+	if _bgm_tween != null:
+		_bgm_tween.kill()
+		_bgm_tween = null
+
+	_bgm_tween = create_tween()
+	_bgm_tween.tween_property(bgm_player, "volume_db", target_volume_db, clamped_duration)
+	await _bgm_tween.finished
+	_bgm_tween = null
 
 
 func _process_bgm_requests() -> void:
