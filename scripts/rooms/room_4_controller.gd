@@ -1,6 +1,7 @@
 extends Node2D
 
 const TOTAL_HEART_PIECES: int = 6
+
 const PIECE_COLORS: Array[Color] = [
 	Color(0.94902, 0.447059, 0.627451, 0.92),
 	Color(0.984314, 0.545098, 0.705882, 0.92),
@@ -9,6 +10,7 @@ const PIECE_COLORS: Array[Color] = [
 	Color(0.972549, 0.501961, 0.670588, 0.92),
 	Color(1.0, 0.576471, 0.72549, 0.92)
 ]
+
 const MINIGAME_POSITIONS: Array[Vector2] = [
 	Vector2(95, 860),
 	Vector2(165, 860),
@@ -17,6 +19,7 @@ const MINIGAME_POSITIONS: Array[Vector2] = [
 	Vector2(375, 860),
 	Vector2(445, 860)
 ]
+
 const TARGET_OFFSETS: Array[Vector2] = [
 	Vector2(-78, -78),
 	Vector2(78, -78),
@@ -30,12 +33,8 @@ const HEART_CENTER: Vector2 = Vector2(270, 430)
 const BOARD_SCALE: float = 1.55
 const ARRIVAL_TOLERANCE: float = 24.0
 
-const HENRI_IDLE_COLUMNS: int = 6
-const HENRI_IDLE_ROWS: int = 6
-const HENRI_FRAME_SIZE: Vector2 = Vector2(256, 256)
-
 const FINALE_HENRI_POSITION: Vector2 = Vector2(208, 508)
-const FINALE_DOLL_POSITION: Vector2 = Vector2(332, 508)
+const FINALE_PROTAGONIST_POSITION: Vector2 = Vector2(332, 508)
 const FINALE_SPAWN_OFFSET_Y: float = 52.0
 const FINALE_HEART_FILL_STEP_DURATION: float = 0.12
 const FINALE_HEART_COMPLETE_HOLD: float = 1.0
@@ -45,13 +44,23 @@ const FINALE_FADE_IN_DURATION: float = 0.8
 const FINALE_SPAWN_DURATION: float = 0.45
 const FINALE_PHOTO_POSE_DURATION: float = 0.35
 const FINALE_FLASH_DURATION: float = 0.14
-const FINALE_FREEZE_DURATION: float = 1.5
+const FINALE_IMAGE_DELAY_AFTER_FLASH: float = 3.0
+const FINALE_IMAGE_FADE_DURATION: float = 2.0
+const FINALE_TEXT_TRANSITION_DURATION: float = 0.45
+const FINALE_CAPTION_FADE_DURATION: float = 0.6
+const FINALE_END_HOLD_DURATION: float = 5.0
+const FINALE_END_FADE_DURATION: float = 1.2
 const HENRI_INTERACTION_HITBOX_SIZE: Vector2 = Vector2(170, 190)
+const FINALE_CAPTION_TEXT: String = "Vale pizza"
+
+const HENRI_ANIMATION_IDLE: StringName = &"idle"
+const HENRI_ANIMATION_INTERACT: StringName = &"interact"
+const PROTAGONIST_ANIMATION_IDLE: StringName = &"idle"
+const PROTAGONIST_ANIMATION_INTERACT: StringName = &"interact"
 
 const HEART_ASSEMBLY_MINIGAME_SCRIPT: Script = preload("res://scripts/rooms/room_4/heart_assembly_minigame.gd")
 const EVENT_CHAIN_SCRIPT: Script = preload("res://scripts/components/event_chain.gd")
 const HOTSPOT_SCRIPT: Script = preload("res://scripts/components/hotspot.gd")
-const HENRI_IDLE_TEXTURE: Texture2D = preload("res://assets/sprites/HenriIdle-1256x256_6C6L_S01.png")
 
 @onready var _background_before: AnimatedSprite2D = $BackgroundBefore
 @onready var _background_after: AnimatedSprite2D = $BackgroundAfter
@@ -63,6 +72,7 @@ const HENRI_IDLE_TEXTURE: Texture2D = preload("res://assets/sprites/HenriIdle-12
 @onready var _boneca: AnimatedSprite2D = $Doll/Boneca
 @onready var _heart_pieces_root: Node = $HeartPieces
 @onready var _protagonist: Node2D = $Protagonist
+@onready var _end_image: TextureRect = $EndImage
 
 var _pieces_collected: int = 0
 var _assembled_pieces: int = 0
@@ -75,6 +85,9 @@ var _assembly_completed: bool = false
 var _finale_triggered: bool = false
 var _awaiting_henri_arrival: bool = false
 var _post_minigame_heart_played: bool = false
+var _awaiting_final_photo_advance: bool = false
+var _final_text_sequence_started: bool = false
+var _final_completion_started: bool = false
 
 var _assembly_minigame: CanvasLayer
 var _pending_piece_id: String = ""
@@ -88,10 +101,11 @@ var _finale_chain: EventChain
 var _finale_overlay_layer: CanvasLayer
 var _finale_fade_rect: ColorRect
 var _finale_flash_rect: ColorRect
+var _finale_caption_label: Label
+var _finale_black_rect: ColorRect
 var _finale_heart_holder: Node2D
 var _finale_heart_full: Polygon2D
 var _finale_heart_fragments: Array[Polygon2D] = []
-
 
 func _ready() -> void:
 	if _protagonist != null:
@@ -112,6 +126,24 @@ func _ready() -> void:
 	_prepare_finale_scene_state()
 	_update_boy_feedback()
 
+func _input(event: InputEvent) -> void:
+	if not _awaiting_final_photo_advance or _final_text_sequence_started:
+		return
+
+	var pressed: bool = false
+
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+		pressed = mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+		pressed = touch_event.pressed
+
+	if not pressed:
+		return
+
+	get_viewport().set_input_as_handled()
+	_advance_from_final_photo()
 
 func notify_piece_collected(piece_id: String, piece_node: Node2D) -> void:
 	if piece_id == "" or _collected_piece_ids.has(piece_id):
@@ -134,14 +166,11 @@ func notify_piece_collected(piece_id: String, piece_node: Node2D) -> void:
 		_unlock_assembly_area()
 		_show_carried_heart()
 
-
 func are_all_pieces_collected() -> bool:
 	return _pieces_collected >= TOTAL_HEART_PIECES
 
-
 func get_pieces_collected() -> int:
 	return _pieces_collected
-
 
 func _connect_piece_hotspots() -> void:
 	if _heart_pieces_root == null:
@@ -159,7 +188,6 @@ func _connect_piece_hotspots() -> void:
 		var callback: Callable = Callable(self, "_on_piece_hotspot_pressed").bind(piece_node)
 		if not hotspot.pressed.is_connected(callback):
 			hotspot.pressed.connect(callback)
-
 
 func _build_henri_interaction_hotspot() -> void:
 	if _crying_boy == null or _henri_hotspot != null:
@@ -185,12 +213,13 @@ func _build_henri_interaction_hotspot() -> void:
 	if not _henri_hotspot.pressed.is_connected(_on_henri_hotspot_pressed):
 		_henri_hotspot.pressed.connect(_on_henri_hotspot_pressed)
 
-
 func _on_piece_hotspot_pressed(hotspot_id: String, piece_node: Node2D) -> void:
 	if hotspot_id == "" or piece_node == null:
 		return
+
 	if _minigame_opened or _awaiting_assembly_arrival or _pending_piece_id != "":
 		return
+
 	if _collected_piece_ids.has(hotspot_id) or _protagonist == null:
 		return
 
@@ -202,12 +231,13 @@ func _on_piece_hotspot_pressed(hotspot_id: String, piece_node: Node2D) -> void:
 	_protagonist.consume_next_press()
 	_protagonist.move_to_global_position(_pending_piece_target)
 
-
 func _on_henri_hotspot_pressed(_hotspot_id: String) -> void:
 	if not _assembly_completed or _finale_triggered or _awaiting_henri_arrival:
 		return
+
 	if not _post_minigame_heart_played:
 		return
+
 	if _protagonist == null or _crying_boy == null:
 		return
 
@@ -216,10 +246,10 @@ func _on_henri_hotspot_pressed(_hotspot_id: String) -> void:
 	_protagonist.consume_next_press()
 	_protagonist.move_to_global_position(_crying_boy.global_position)
 
-
 func _on_assembly_hotspot_pressed(_hotspot_id: String) -> void:
 	if not are_all_pieces_collected() or _awaiting_assembly_arrival or _minigame_opened:
 		return
+
 	if _protagonist == null or _assembly_area == null:
 		return
 
@@ -227,7 +257,6 @@ func _on_assembly_hotspot_pressed(_hotspot_id: String) -> void:
 	_protagonist.set_manual_input_enabled(false)
 	_protagonist.consume_next_press()
 	_protagonist.move_to_global_position(_assembly_area.global_position)
-
 
 func _on_protagonist_destination_reached(destination: Vector2) -> void:
 	if _pending_piece_id != "":
@@ -255,7 +284,6 @@ func _on_protagonist_destination_reached(destination: Vector2) -> void:
 				_henri_hotspot.set("active", false)
 			_trigger_finale()
 
-
 func _unlock_assembly_area() -> void:
 	if _assembly_unlocked:
 		return
@@ -270,7 +298,6 @@ func _unlock_assembly_area() -> void:
 		tween.set_loops(4)
 		tween.tween_property(_assembly_area, "scale", Vector2(1.08, 1.08), 0.18)
 		tween.tween_property(_assembly_area, "scale", Vector2.ONE, 0.18)
-
 
 func _build_carried_heart() -> void:
 	if _protagonist == null or _carried_heart != null:
@@ -289,16 +316,13 @@ func _build_carried_heart() -> void:
 	_carried_heart.add_child(heart)
 	_protagonist.add_child(_carried_heart)
 
-
 func _show_carried_heart() -> void:
 	if _carried_heart != null:
 		_carried_heart.visible = true
 
-
 func _hide_carried_heart() -> void:
 	if _carried_heart != null:
 		_carried_heart.visible = false
-
 
 func _build_minigame() -> void:
 	if _assembly_minigame != null:
@@ -323,7 +347,6 @@ func _build_minigame() -> void:
 	if not _assembly_minigame.is_connected("assembly_completed", _on_minigame_completed):
 		_assembly_minigame.connect("assembly_completed", _on_minigame_completed)
 
-
 func _open_minigame() -> void:
 	if _minigame_opened or _assembly_minigame == null:
 		return
@@ -334,7 +357,6 @@ func _open_minigame() -> void:
 	if _protagonist != null:
 		_protagonist.set_manual_input_enabled(false)
 
-
 func _on_minigame_piece_placed(piece_id: String, _zone_id: String) -> void:
 	if piece_id == "" or _assembled_piece_ids.has(piece_id):
 		return
@@ -342,7 +364,6 @@ func _on_minigame_piece_placed(piece_id: String, _zone_id: String) -> void:
 	_assembled_piece_ids[piece_id] = true
 	_assembled_pieces = _assembled_piece_ids.size()
 	_update_boy_feedback()
-
 
 func _on_minigame_completed() -> void:
 	if _assembly_completed:
@@ -352,7 +373,6 @@ func _on_minigame_completed() -> void:
 	_update_boy_feedback()
 	_prepare_post_minigame_state()
 	_play_post_minigame_heart_animation()
-
 
 func _prepare_post_minigame_state() -> void:
 	_minigame_opened = false
@@ -381,6 +401,15 @@ func _prepare_post_minigame_state() -> void:
 		_crying_boy.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		_crying_boy.scale = Vector2.ONE
 
+	if _doll != null:
+		_doll.visible = false
+		_doll.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_doll.scale = Vector2.ONE
+
+	if _boneca != null:
+		_boneca.visible = false
+		_boneca.play("default")
+
 	_step_boy_stops_crying()
 
 	if _protagonist != null:
@@ -392,7 +421,6 @@ func _prepare_post_minigame_state() -> void:
 
 	if _henri_hotspot != null:
 		_henri_hotspot.set("active", false)
-
 
 func _play_post_minigame_heart_animation() -> void:
 	if _post_minigame_heart_played:
@@ -409,7 +437,6 @@ func _play_post_minigame_heart_animation() -> void:
 	var timer: SceneTreeTimer = get_tree().create_timer(FINALE_HEART_REFORM_DURATION)
 	timer.timeout.connect(_on_post_minigame_heart_animation_finished)
 
-
 func _on_post_minigame_heart_animation_finished() -> void:
 	if _finale_triggered:
 		return
@@ -420,14 +447,15 @@ func _on_post_minigame_heart_animation_finished() -> void:
 	if _henri_hotspot != null:
 		_henri_hotspot.set("active", true)
 
-
 func _trigger_finale() -> void:
 	if _finale_triggered:
 		return
+
 	if _finale_chain == null:
 		return
 
 	_build_finale_overlay()
+	_prepare_finale_scene_state()
 	_reset_finale_heart_visuals()
 
 	_finale_triggered = true
@@ -444,14 +472,16 @@ func _trigger_finale() -> void:
 		_henri_hotspot.set("active", false)
 
 	_finale_chain.clear()
-	_finale_chain.add_step(Callable(self, "_step_switch_bgm_to_finale"), 0.2)
+	_finale_chain.add_step(Callable(self, "_step_boy_stops_crying"), 0.2)
+	_finale_chain.add_step(Callable(self, "_step_fade_out_corrupted_scene"), FINALE_FADE_OUT_DURATION)
+	_finale_chain.add_step(Callable(self, "_step_switch_bgm_to_finale"), 0.1)
+	_finale_chain.add_step(Callable(self, "_step_fade_in_peaceful_scene"), FINALE_FADE_IN_DURATION)
 	_finale_chain.add_step(Callable(self, "_step_spawn_finale_characters"), FINALE_SPAWN_DURATION)
 	_finale_chain.add_step(Callable(self, "_step_photo_pose"), FINALE_PHOTO_POSE_DURATION)
-	_finale_chain.add_step(Callable(self, "_step_flash_white"), (FINALE_FLASH_DURATION * 2.0) + 0.05)
-	_finale_chain.add_step(Callable(self, "_step_hold_final_frame"), FINALE_FREEZE_DURATION)
-	_finale_chain.add_step(Callable(self, "_step_transition_to_final_screen"), 0.0)
+	_finale_chain.add_step(Callable(self, "_step_flash_white"), (FINALE_FLASH_DURATION * 2.0) + FINALE_IMAGE_DELAY_AFTER_FLASH)
+	_finale_chain.add_step(Callable(self, "_step_show_final_image"), FINALE_IMAGE_FADE_DURATION)
+	_finale_chain.add_step(Callable(self, "_step_enable_final_photo_advance"), 0.0)
 	_finale_chain.play()
-
 
 func _build_finale_overlay() -> void:
 	if _finale_overlay_layer != null:
@@ -517,6 +547,31 @@ func _build_finale_overlay() -> void:
 	_finale_flash_rect.offset_bottom = 0.0
 	_finale_overlay_layer.add_child(_finale_flash_rect)
 
+	_finale_black_rect = ColorRect.new()
+	_finale_black_rect.name = "BlackRect"
+	_finale_black_rect.color = Color(0.0, 0.0, 0.0, 0.0)
+	_finale_black_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_finale_black_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_finale_black_rect.offset_left = 0.0
+	_finale_black_rect.offset_top = 0.0
+	_finale_black_rect.offset_right = 0.0
+	_finale_black_rect.offset_bottom = 0.0
+	_finale_overlay_layer.add_child(_finale_black_rect)
+
+	_finale_caption_label = Label.new()
+	_finale_caption_label.name = "CaptionLabel"
+	_finale_caption_label.text = FINALE_CAPTION_TEXT
+	_finale_caption_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_finale_caption_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_finale_caption_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_finale_caption_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_finale_caption_label.add_theme_font_size_override("font_size", 34)
+	_finale_caption_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_finale_caption_label.offset_left = 36.0
+	_finale_caption_label.offset_top = 0.0
+	_finale_caption_label.offset_right = -36.0
+	_finale_caption_label.offset_bottom = 0.0
+	_finale_overlay_layer.add_child(_finale_caption_label)
 
 func _build_finale_chain() -> void:
 	if _finale_chain != null:
@@ -526,24 +581,49 @@ func _build_finale_chain() -> void:
 	_finale_chain.name = "FinaleEventChain"
 	add_child(_finale_chain)
 
-
 func _prepare_finale_scene_state() -> void:
+	_awaiting_final_photo_advance = false
+	_final_text_sequence_started = false
+	_final_completion_started = false
+
 	if _background_after != null:
 		_background_after.visible = false
 		_background_after.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 	if _doll != null:
 		_doll.visible = false
-		_doll.position = FINALE_DOLL_POSITION + Vector2(0.0, FINALE_SPAWN_OFFSET_Y)
-		_doll.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_doll.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		_doll.scale = Vector2.ONE
 
 	if _boneca != null:
 		_boneca.visible = false
 		_boneca.play("default")
 
-	_reset_finale_heart_visuals()
+	if _protagonist != null:
+		_protagonist.visible = true
+		_protagonist.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_protagonist.scale = Vector2.ONE
+		_play_protagonist_animation(PROTAGONIST_ANIMATION_IDLE)
 
+	if _end_image != null:
+		_end_image.visible = false
+		_end_image.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_end_image.z_index = 10
+		_end_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_end_image.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_end_image.offset_left = 0.0
+		_end_image.offset_top = 0.0
+		_end_image.offset_right = 0.0
+		_end_image.offset_bottom = 0.0
+
+	if _finale_black_rect != null:
+		_finale_black_rect.color = Color(0.0, 0.0, 0.0, 0.0)
+
+	if _finale_caption_label != null:
+		_finale_caption_label.text = FINALE_CAPTION_TEXT
+		_finale_caption_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+
+	_reset_finale_heart_visuals()
 
 func _step_show_completed_heart() -> void:
 	if _finale_heart_holder == null:
@@ -562,7 +642,6 @@ func _step_show_completed_heart() -> void:
 	tween.tween_interval(FINALE_HEART_COMPLETE_HOLD)
 	tween.tween_callback(Callable(self, "_hide_finale_heart"))
 
-
 func _show_heart_fragment(index: int) -> void:
 	if index < 0 or index >= _finale_heart_fragments.size():
 		return
@@ -574,7 +653,6 @@ func _show_heart_fragment(index: int) -> void:
 	tween.set_parallel(true)
 	tween.tween_property(fragment, "scale", Vector2.ONE, 0.1)
 	tween.tween_property(fragment, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.1)
-
 
 func _show_full_heart() -> void:
 	if _finale_heart_full == null:
@@ -590,11 +668,9 @@ func _show_full_heart() -> void:
 	tween.tween_property(_finale_heart_full, "scale", Vector2.ONE, 0.16)
 	tween.tween_property(_finale_heart_full, "color", Color(0.98, 0.56, 0.74, 1.0), 0.16)
 
-
 func _hide_finale_heart() -> void:
 	if _finale_heart_holder != null:
 		_finale_heart_holder.visible = false
-
 
 func _reset_finale_heart_visuals() -> void:
 	if _finale_heart_holder != null:
@@ -610,16 +686,13 @@ func _reset_finale_heart_visuals() -> void:
 		_finale_heart_full.scale = Vector2(0.82, 0.82)
 		_finale_heart_full.color = Color(0.98, 0.56, 0.74, 0.0)
 
-
 func _step_boy_stops_crying() -> void:
 	if _henri == null:
 		return
 
-	_henri.sprite_frames = _build_sheet_sprite_frames(HENRI_IDLE_TEXTURE, HENRI_IDLE_COLUMNS, HENRI_IDLE_ROWS, &"idle", 9.0)
-	_henri.play("idle")
+	_play_henri_animation(HENRI_ANIMATION_IDLE)
 	_henri.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	_henri.speed_scale = 1.0
-
 
 func _step_fade_out_corrupted_scene() -> void:
 	if _finale_fade_rect == null:
@@ -628,18 +701,17 @@ func _step_fade_out_corrupted_scene() -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(_finale_fade_rect, "color", Color(0.0, 0.0, 0.0, 1.0), FINALE_FADE_OUT_DURATION)
 
-
 func _step_switch_bgm_to_finale() -> void:
 	var audio_manager: Node = get_node_or_null("/root/AudioManager")
 	if audio_manager == null:
 		push_warning("Room4 finale: AudioManager nao encontrado.")
 		return
+
 	if not audio_manager.has_method("play_bgm"):
 		push_warning("Room4 finale: AudioManager sem metodo play_bgm.")
 		return
 
 	audio_manager.call("play_bgm", "finale")
-
 
 func _step_fade_in_peaceful_scene() -> void:
 	if _background_before != null:
@@ -655,10 +727,18 @@ func _step_fade_in_peaceful_scene() -> void:
 		_background_after.visible = true
 		_background_after.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
+	if _doll != null:
+		_doll.visible = true
+		_doll.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_doll.scale = Vector2.ONE
+
+	if _boneca != null:
+		_boneca.visible = true
+		_boneca.play("default")
+
 	if _finale_fade_rect != null:
 		var tween: Tween = create_tween()
 		tween.tween_property(_finale_fade_rect, "color", Color(0.0, 0.0, 0.0, 0.0), FINALE_FADE_IN_DURATION)
-
 
 func _step_spawn_finale_characters() -> void:
 	if _crying_boy != null:
@@ -669,13 +749,19 @@ func _step_spawn_finale_characters() -> void:
 
 	if _doll != null:
 		_doll.visible = true
-		_doll.position = FINALE_DOLL_POSITION + Vector2(0.0, FINALE_SPAWN_OFFSET_Y)
-		_doll.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_doll.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		_doll.scale = Vector2.ONE
 
 	if _boneca != null:
 		_boneca.visible = true
 		_boneca.play("default")
+
+	if _protagonist != null:
+		_protagonist.visible = true
+		_protagonist.global_position = FINALE_PROTAGONIST_POSITION + Vector2(0.0, FINALE_SPAWN_OFFSET_Y)
+		_protagonist.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_protagonist.scale = Vector2.ONE
+		_play_protagonist_animation(PROTAGONIST_ANIMATION_IDLE)
 
 	var tween: Tween = create_tween()
 	tween.set_parallel(true)
@@ -684,12 +770,14 @@ func _step_spawn_finale_characters() -> void:
 		tween.tween_property(_crying_boy, "position", FINALE_HENRI_POSITION, FINALE_SPAWN_DURATION)
 		tween.tween_property(_crying_boy, "modulate", Color(1.0, 1.0, 1.0, 1.0), FINALE_SPAWN_DURATION)
 
-	if _doll != null:
-		tween.tween_property(_doll, "position", FINALE_DOLL_POSITION, FINALE_SPAWN_DURATION)
-		tween.tween_property(_doll, "modulate", Color(1.0, 1.0, 1.0, 1.0), FINALE_SPAWN_DURATION)
-
+	if _protagonist != null:
+		tween.tween_property(_protagonist, "global_position", FINALE_PROTAGONIST_POSITION, FINALE_SPAWN_DURATION)
+		tween.tween_property(_protagonist, "modulate", Color(1.0, 1.0, 1.0, 1.0), FINALE_SPAWN_DURATION)
 
 func _step_photo_pose() -> void:
+	_play_henri_animation(HENRI_ANIMATION_INTERACT)
+	_play_protagonist_animation(PROTAGONIST_ANIMATION_INTERACT)
+
 	var tween: Tween = create_tween()
 	tween.set_parallel(true)
 
@@ -697,10 +785,9 @@ func _step_photo_pose() -> void:
 		tween.tween_property(_crying_boy, "scale", Vector2(1.04, 1.04), FINALE_PHOTO_POSE_DURATION)
 		tween.tween_property(_crying_boy, "position", FINALE_HENRI_POSITION + Vector2(-8.0, -6.0), FINALE_PHOTO_POSE_DURATION)
 
-	if _doll != null:
-		tween.tween_property(_doll, "scale", Vector2(1.04, 1.04), FINALE_PHOTO_POSE_DURATION)
-		tween.tween_property(_doll, "position", FINALE_DOLL_POSITION + Vector2(8.0, -6.0), FINALE_PHOTO_POSE_DURATION)
-
+	if _protagonist != null:
+		tween.tween_property(_protagonist, "scale", Vector2(1.04, 1.04), FINALE_PHOTO_POSE_DURATION)
+		tween.tween_property(_protagonist, "global_position", FINALE_PROTAGONIST_POSITION + Vector2(8.0, -6.0), FINALE_PHOTO_POSE_DURATION)
 
 func _step_flash_white() -> void:
 	if _finale_flash_rect == null:
@@ -712,22 +799,104 @@ func _step_flash_white() -> void:
 	tween.tween_property(_finale_flash_rect, "color", Color(1.0, 1.0, 1.0, 1.0), FINALE_FLASH_DURATION)
 	tween.tween_property(_finale_flash_rect, "color", Color(1.0, 1.0, 1.0, 0.0), FINALE_FLASH_DURATION)
 
+func _step_show_final_image() -> void:
+	if _end_image == null:
+		return
 
-func _step_hold_final_frame() -> void:
-	return
+	_end_image.visible = true
+	_end_image.modulate = Color(1.0, 1.0, 1.0, 0.0)
 
+	var tween: Tween = create_tween()
+	tween.tween_property(_end_image, "modulate", Color(1.0, 1.0, 1.0, 1.0), FINALE_IMAGE_FADE_DURATION)
 
-func _step_transition_to_final_screen() -> void:
+func _step_enable_final_photo_advance() -> void:
+	_awaiting_final_photo_advance = true
+
+func _advance_from_final_photo() -> void:
+	if not _awaiting_final_photo_advance or _final_text_sequence_started:
+		return
+
+	_awaiting_final_photo_advance = false
+	_final_text_sequence_started = true
+
+	var tween: Tween = create_tween()
+	tween.set_parallel(true)
+
+	if _finale_black_rect != null:
+		tween.tween_property(_finale_black_rect, "color", Color(0.0, 0.0, 0.0, 1.0), FINALE_TEXT_TRANSITION_DURATION)
+
+	if _end_image != null:
+		tween.tween_property(_end_image, "modulate", Color(1.0, 1.0, 1.0, 0.0), FINALE_TEXT_TRANSITION_DURATION)
+
+	tween.finished.connect(_on_final_text_backdrop_ready)
+
+func _on_final_text_backdrop_ready() -> void:
+	if _end_image != null:
+		_end_image.visible = false
+
+	if _finale_caption_label != null:
+		_finale_caption_label.text = FINALE_CAPTION_TEXT
+		_finale_caption_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+
+	var tween: Tween = create_tween()
+	if _finale_caption_label != null:
+		tween.tween_property(_finale_caption_label, "modulate", Color(1.0, 1.0, 1.0, 1.0), FINALE_CAPTION_FADE_DURATION)
+
+	var hold_timer: SceneTreeTimer = get_tree().create_timer(FINALE_END_HOLD_DURATION)
+	hold_timer.timeout.connect(_step_fade_to_black)
+
+func _step_fade_to_black() -> void:
+	if _final_completion_started:
+		return
+
+	_final_completion_started = true
+
+	var tween: Tween = create_tween()
+
+	if _finale_caption_label != null:
+		tween.tween_property(_finale_caption_label, "modulate", Color(1.0, 1.0, 1.0, 0.0), FINALE_END_FADE_DURATION)
+
+	tween.finished.connect(_step_complete_finale_room)
+
+func _step_complete_finale_room() -> void:
 	var game_manager: Node = get_node_or_null("/root/GameManager")
 	if game_manager == null:
 		push_warning("Room4 finale: GameManager nao encontrado.")
 		return
+
 	if not game_manager.has_method("complete_room"):
 		push_warning("Room4 finale: GameManager sem metodo complete_room.")
 		return
 
 	game_manager.call("complete_room", 4)
 
+func _play_henri_animation(animation_name: StringName) -> void:
+	if _henri == null or _henri.sprite_frames == null:
+		return
+
+	if not _henri.sprite_frames.has_animation(animation_name):
+		return
+
+	if _henri.animation == animation_name and _henri.is_playing():
+		return
+
+	_henri.play(animation_name)
+
+func _play_protagonist_animation(animation_name: StringName) -> void:
+	if _protagonist == null:
+		return
+
+	var protagonist_sprite: AnimatedSprite2D = _protagonist.get_node_or_null("KaySprite") as AnimatedSprite2D
+	if protagonist_sprite == null or protagonist_sprite.sprite_frames == null:
+		return
+
+	if not protagonist_sprite.sprite_frames.has_animation(animation_name):
+		return
+
+	if protagonist_sprite.animation == animation_name and protagonist_sprite.is_playing():
+		return
+
+	protagonist_sprite.play(animation_name)
 
 func _build_piece_polygons() -> Array[PackedVector2Array]:
 	return [
@@ -739,7 +908,6 @@ func _build_piece_polygons() -> Array[PackedVector2Array]:
 		PackedVector2Array([Vector2(-25, 0), Vector2(-12, -19), Vector2(0, -27), Vector2(12, -19), Vector2(25, 0), Vector2(0, 26)])
 	]
 
-
 func _build_heart_silhouette() -> PackedVector2Array:
 	var silhouette: PackedVector2Array = PackedVector2Array()
 
@@ -750,7 +918,6 @@ func _build_heart_silhouette() -> PackedVector2Array:
 		silhouette.append(Vector2(x, y) * 10.0)
 
 	return silhouette
-
 
 func _update_boy_feedback() -> void:
 	if _henri == null or _crying_boy == null:
@@ -766,30 +933,3 @@ func _update_boy_feedback() -> void:
 	_crying_boy.scale = Vector2.ONE.lerp(Vector2(1.1, 1.1), progress)
 	_henri.modulate = Color(1.0, 0.72 + (0.28 * progress), 0.72 + (0.18 * progress), 1.0)
 	_henri.speed_scale = 1.0 - (0.45 * progress)
-
-
-func _build_sheet_sprite_frames(
-	texture: Texture2D,
-	columns: int,
-	rows: int,
-	animation_name: StringName,
-	fps: float
-) -> SpriteFrames:
-	var frames: SpriteFrames = SpriteFrames.new()
-	frames.add_animation(animation_name)
-	frames.set_animation_speed(animation_name, fps)
-	frames.set_animation_loop(animation_name, true)
-
-	for row: int in range(rows):
-		for column: int in range(columns):
-			var frame_texture: AtlasTexture = AtlasTexture.new()
-			frame_texture.atlas = texture
-			frame_texture.region = Rect2(
-				float(column) * HENRI_FRAME_SIZE.x,
-				float(row) * HENRI_FRAME_SIZE.y,
-				HENRI_FRAME_SIZE.x,
-				HENRI_FRAME_SIZE.y
-			)
-			frames.add_frame(animation_name, frame_texture)
-
-	return frames

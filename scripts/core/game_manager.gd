@@ -12,7 +12,6 @@ const ROOM_SCENES: Dictionary = {
 	4: "res://scenes/rooms/room_4.tscn",
 }
 const MAIN_MENU_SCENE_PATH: String = "res://scenes/ui/main_menu.tscn"
-const FINAL_SCENE_PATH: String = "res://scenes/ui/final_screen.tscn"
 
 signal room_completed(room_id: int)
 signal transition_started
@@ -104,7 +103,7 @@ func complete_room(room_id: int) -> void:
 		return_to_hub()
 		return
 
-	_transition_to_scene_path(FINAL_SCENE_PATH, current_room, false)
+	return
 
 
 func _transition_to_scene_path(scene_path: String, next_room_id: int, update_current_room: bool) -> void:
@@ -163,7 +162,6 @@ func _preload_available_scenes() -> void:
 		_cache_scene_if_available(scene_path)
 
 	_cache_scene_if_available(MAIN_MENU_SCENE_PATH)
-	_cache_scene_if_available(FINAL_SCENE_PATH)
 
 
 func _cache_scene_if_available(scene_path: String) -> void:
@@ -216,9 +214,6 @@ func _sync_bgm_for_scene_path(scene_path: String) -> void:
 func _get_bgm_track_key_for_scene_path(scene_path: String) -> String:
 	if scene_path == MAIN_MENU_SCENE_PATH:
 		return "hub_room_1"
-
-	if scene_path == FINAL_SCENE_PATH:
-		return "finale"
 
 	for room_id_variant in ROOM_SCENES.keys():
 		var room_id: int = int(room_id_variant)

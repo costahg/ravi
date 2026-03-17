@@ -1015,6 +1015,7 @@ size_flags_horizontal = 2
 size_flags_vertical = 2
 texture = ExtResource("10_end_image")
 expand_mode = 1
+stretch_mode = 6
 
 [node name="HeartPieces" type="Node2D" parent="."]
 
